@@ -3,18 +3,18 @@
 namespace unit;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 
-class PusherConstructorTest extends TestCase
+class SockudoConstructorTest extends TestCase
 {
     public function testUseTLSOptionWillSetHostAndPort(): void
     {
         $options = ['useTLS' => true];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
+        $settings = $sockudo->getSettings();
         self::assertEquals('https', $settings['scheme'], 'https');
-        self::assertEquals('api-mt1.pusher.com', $settings['host']);
+        self::assertEquals('localhost', $settings['host']);
         self::assertEquals('443', $settings['port']);
     }
 
@@ -25,9 +25,9 @@ class PusherConstructorTest extends TestCase
             'host' => 'test.com',
             'port' => '3000',
         ];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
+        $settings = $sockudo->getSettings();
         self::assertEquals('http', $settings['scheme']);
         self::assertEquals($options['host'], $settings['host']);
         self::assertEquals($options['port'], $settings['port']);
@@ -38,9 +38,9 @@ class PusherConstructorTest extends TestCase
         $options = [
             'host' => 'http://test.com',
         ];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
+        $settings = $sockudo->getSettings();
         self::assertEquals('https', $settings['scheme']);
         self::assertEquals('test.com', $settings['host']);
     }
@@ -50,22 +50,22 @@ class PusherConstructorTest extends TestCase
         $options = [
             'cluster' => 'eu',
         ];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
-        self::assertEquals('api-eu.pusher.com', $settings['host']);
+        $settings = $sockudo->getSettings();
+        self::assertEquals('api-eu.sockudo.com', $settings['host']);
     }
 
     public function testClusterOptionIsOverriddenByHostIfItExists(): void
     {
         $options = [
             'cluster' => 'eu',
-            'host' => 'api.staging.pusher.com',
+            'host' => 'api.staging.sockudo.com',
         ];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
-        self::assertEquals('api.staging.pusher.com', $settings['host']);
+        $settings = $sockudo->getSettings();
+        self::assertEquals('api.staging.sockudo.com', $settings['host']);
     }
 
     public function testSetTimeoutOption(): void
@@ -73,9 +73,9 @@ class PusherConstructorTest extends TestCase
         $options = [
             'timeout' => 10,
         ];
-        $pusher = new Pusher('app_key', 'app_secret', 'app_id', $options);
+        $sockudo = new Sockudo('app_key', 'app_secret', 'app_id', $options);
 
-        $settings = $pusher->getSettings();
+        $settings = $sockudo->getSettings();
         self::assertEquals(10, $settings['timeout']);
     }
 }

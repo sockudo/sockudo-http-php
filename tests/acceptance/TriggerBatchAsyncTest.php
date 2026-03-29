@@ -4,37 +4,37 @@ namespace acceptance;
 
 use Error;
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 use stdClass;
 
 class TriggerBatchAsyncTest extends TestCase
 {
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
-        if (PUSHERAPP_AUTHKEY === '' || PUSHERAPP_SECRET === '' || PUSHERAPP_APPID === '') {
+        if (SOCKUDOAPP_AUTHKEY === '' || SOCKUDOAPP_SECRET === '' || SOCKUDOAPP_APPID === '') {
             $this->markTestSkipped('Please set the
-            PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET and
-            PUSHERAPP_APPID keys.');
+            SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET and
+            SOCKUDOAPP_APPID keys.');
         } else {
-            $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, ['cluster' => PUSHERAPP_CLUSTER]);
+            $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, ['cluster' => SOCKUDOAPP_CLUSTER]);
         }
     }
 
     public function testObjectConstruct(): void
     {
-        self::assertNotNull($this->pusher, 'Created new \Pusher\Pusher object');
+        self::assertNotNull($this->sockudo, 'Created new \Sockudo\Sockudo object');
     }
 
     public function testSimplePush(): void
     {
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => ['my' => 'data']];
-        $result = $this->pusher->triggerBatchAsync($batch)->wait();
+        $result = $this->sockudo->triggerBatchAsync($batch)->wait();
         $this->assertEquals(new stdClass(), $result);
     }
 
@@ -42,9 +42,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => ['my' => 'data']];
@@ -56,9 +56,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => ['my' => 'data']];
@@ -71,9 +71,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => 'test-string'];
@@ -85,9 +85,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $expectedMyChannel = new stdClass();
         $expectedMyChannel->subscription_count = 1;
@@ -114,9 +114,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => 'test-string'];
@@ -129,9 +129,9 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => 'test-string'];
@@ -144,10 +144,10 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS'  => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
             'encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'private-encrypted-test_channel', 'name' => 'my_event', 'data' => 'test-string'];
@@ -159,10 +159,10 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
             'encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => 'test-string'];
@@ -175,10 +175,10 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
             'encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => 'secret-string'];
@@ -193,9 +193,9 @@ class TriggerBatchAsyncTest extends TestCase
 
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'my_test_chan', 'name' => 'my_event', 'data' => ['my' => 'data']];
@@ -207,10 +207,10 @@ class TriggerBatchAsyncTest extends TestCase
     {
         $options = [
             'useTLS'                       => true,
-            'cluster' => PUSHERAPP_CLUSTER,
+            'cluster' => SOCKUDOAPP_CLUSTER,
             'encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
         ];
-        $pc = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [];
         $batch[] = ['channel' => 'my_test_chan', 'name' => 'my_event', 'data' => ['my' => 'data']];
@@ -221,19 +221,19 @@ class TriggerBatchAsyncTest extends TestCase
 
     public function testSendingOver10kBMessageReturns413(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
         $this->expectExceptionMessage('content of this event');
         $this->expectExceptionCode('413');
 
         $data = str_pad('', 11 * 1024, 'a');
         $batch = [];
         $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => $data];
-        $this->pusher->triggerBatchAsync($batch, true)->wait();
+        $this->sockudo->triggerBatchAsync($batch, true)->wait();
     }
 
     public function testSendingOver10messagesReturns400(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
         $this->expectExceptionMessage('Batch too large');
         $this->expectExceptionCode('400');
 
@@ -241,17 +241,17 @@ class TriggerBatchAsyncTest extends TestCase
         foreach (range(1, 11) as $i) {
             $batch[] = ['channel' => 'test_channel', 'name' => 'my_event', 'data' => ['index' => $i]];
         }
-        $this->pusher->triggerBatchAsync($batch, false)->wait();
+        $this->sockudo->triggerBatchAsync($batch, false)->wait();
     }
 
     public function testTriggeringApiExceptionIfConnectionErrorOcurred(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
 
         $options = ['host' => 'invalidhost'];
-        $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $batch = [['channel' => 'test_channel', 'name' => 'my_event', 'data' => ['index' => 0]]];
-        $this->pusher->triggerBatchAsync($batch, false)->wait();
+        $this->sockudo->triggerBatchAsync($batch, false)->wait();
     }
 }

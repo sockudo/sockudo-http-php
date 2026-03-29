@@ -1,8 +1,8 @@
 <?php
 
-namespace Pusher;
+namespace Sockudo;
 
-class PusherInstance
+class SockudoInstance
 {
     private static $instance = null;
     private static $app_id = '';
@@ -10,18 +10,18 @@ class PusherInstance
     private static $api_key = '';
 
     /**
-     * Get the pusher singleton instance.
+     * Get the sockudo singleton instance.
      *
-     * @return Pusher
-     * @throws PusherException
+     * @return Sockudo
+     * @throws SockudoException
      */
-    public static function get_pusher()
+    public static function get_sockudo()
     {
         if (self::$instance !== null) {
             return self::$instance;
         }
 
-        self::$instance = new Pusher(
+        self::$instance = new Sockudo(
             self::$api_key,
             self::$secret,
             self::$app_id

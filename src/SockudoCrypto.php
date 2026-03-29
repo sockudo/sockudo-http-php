@@ -1,8 +1,8 @@
 <?php
 
-namespace Pusher;
+namespace Sockudo;
 
-class PusherCrypto
+class SockudoCrypto
 {
     private $encryption_master_key;
 
@@ -54,22 +54,22 @@ class PusherCrypto
     /**
      * @param $encryption_master_key_base64
      * @return string
-     * @throws PusherException
+     * @throws SockudoException
      */
     public static function parse_master_key($encryption_master_key_base64): string
     {
         if (!function_exists('sodium_crypto_secretbox')) {
-            throw new PusherException('To use end to end encryption, you must either be using PHP 7.2 or greater or have installed the libsodium-php extension for php < 7.2.');
+            throw new SockudoException('To use end to end encryption, you must either be using PHP 7.2 or greater or have installed the libsodium-php extension for php < 7.2.');
         }
 
         if ($encryption_master_key_base64 !== '') {
             $decoded_key = base64_decode($encryption_master_key_base64, true);
             if ($decoded_key === false) {
-                throw new PusherException('encryption_master_key_base64 must be a valid base64 string');
+                throw new SockudoException('encryption_master_key_base64 must be a valid base64 string');
             }
 
             if (strlen($decoded_key) !== SODIUM_CRYPTO_SECRETBOX_KEYBYTES) {
-                throw new PusherException('encryption_master_key_base64 must encode a key which is 32 bytes long');
+                throw new SockudoException('encryption_master_key_base64 must encode a key which is 32 bytes long');
             }
 
             return $decoded_key;
@@ -79,7 +79,7 @@ class PusherCrypto
     }
 
     /**
-     * Initialises a PusherCrypto instance.
+     * Initialises a SockudoCrypto instance.
      *
      * @param string $encryption_master_key the SECRET_KEY_LENGTH key that will be used for key derivation.
      */
@@ -94,7 +94,7 @@ class PusherCrypto
      * @param object $event an object that has an encrypted data property and a channel property.
      *
      * @return object the event with a decrypted payload, or false if decryption was unsuccessful.
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function decrypt_event(object $event): object
     {
@@ -102,7 +102,7 @@ class PusherCrypto
         $shared_secret = $this->generate_shared_secret($event->channel);
         $decrypted_payload = $this->decrypt_payload($parsed_payload->ciphertext, $parsed_payload->nonce, $shared_secret);
         if (!$decrypted_payload) {
-            throw new PusherException('Decryption of the payload failed. Wrong key?');
+            throw new SockudoException('Decryption of the payload failed. Wrong key?');
         }
         $event->data = $decrypted_payload;
 
@@ -115,12 +115,12 @@ class PusherCrypto
      * @param string $channel the name of the channel
      *
      * @return string a SHA256 hash (encoded as base64) of the channel name appended to the encryption key
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function generate_shared_secret(string $channel): string
     {
         if (!self::is_encrypted_channel($channel)) {
-            throw new PusherException('You must specify a channel of the form private-encrypted-* for E2E encryption. Got ' . $channel);
+            throw new SockudoException('You must specify a channel of the form private-encrypted-* for E2E encryption. Got ' . $channel);
         }
 
         return hash('sha256', $channel . $this->encryption_master_key, true);
@@ -133,13 +133,13 @@ class PusherCrypto
      * @param string $plaintext the data to encrypt
      *
      * @return string a string ready to be sent as the data of an event.
-     * @throws PusherException
+     * @throws SockudoException
      * @throws \SodiumException
      */
     public function encrypt_payload(string $channel, string $plaintext): string
     {
         if (!self::is_encrypted_channel($channel)) {
-            throw new PusherException('Cannot encrypt plaintext for a channel that is not of the form private-encrypted-*. Got ' . $channel);
+            throw new SockudoException('Cannot encrypt plaintext for a channel that is not of the form private-encrypted-*. Got ' . $channel);
         }
         $nonce = $this->generate_nonce();
         $shared_secret = $this->generate_shared_secret($channel);
@@ -148,7 +148,7 @@ class PusherCrypto
         try {
             return $this->format_encrypted_message($nonce, $cipher_text);
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
     }
 
@@ -197,20 +197,20 @@ class PusherCrypto
      * @param string $payload the encrypted message payload
      *
      * @return object php object with decoded nonce and ciphertext
-     * @throws PusherException
+     * @throws SockudoException
      */
     private function parse_encrypted_message(string $payload): object
     {
         try {
             $decoded_payload = json_decode($payload, false, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data decoding error.');
+            throw new SockudoException('Data decoding error.');
         }
 
         $decoded_payload->nonce = base64_decode($decoded_payload->nonce);
         $decoded_payload->ciphertext = base64_decode($decoded_payload->ciphertext);
         if ($decoded_payload->ciphertext === '' || strlen($decoded_payload->nonce) !== SODIUM_CRYPTO_SECRETBOX_NONCEBYTES) {
-            throw new PusherException('Received a payload that cannot be parsed.');
+            throw new SockudoException('Received a payload that cannot be parsed.');
         }
 
         return $decoded_payload;

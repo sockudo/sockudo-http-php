@@ -1,6 +1,6 @@
 <?php
 
-namespace Pusher;
+namespace Sockudo;
 
 class Webhook
 {

@@ -8,15 +8,15 @@ use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Handler\CurlHandler;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\RequestInterface;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 
 class MiddlewareTest extends TestCase
 {
     private $count = 0;
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     public function increment(): Closure
     {
@@ -30,23 +30,23 @@ class MiddlewareTest extends TestCase
 
     protected function setUp(): void
     {
-        if (PUSHERAPP_AUTHKEY === '' || PUSHERAPP_SECRET === '' || PUSHERAPP_APPID === '') {
+        if (SOCKUDOAPP_AUTHKEY === '' || SOCKUDOAPP_SECRET === '' || SOCKUDOAPP_APPID === '') {
             self::markTestSkipped('Please set the
-            PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET and
-            PUSHERAPP_APPID keys.');
+            SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET and
+            SOCKUDOAPP_APPID keys.');
         } else {
             $stack = new HandlerStack();
             $stack->setHandler(new CurlHandler());
             $stack->push($this->increment());
             $client = new Client(['handler' => $stack]);
-            $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, ['cluster' => PUSHERAPP_CLUSTER], $client);
+            $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, ['cluster' => SOCKUDOAPP_CLUSTER], $client);
         }
     }
 
     public function testStringPush(): void
     {
         self::assertEquals(0, $this->count);
-        $result = $this->pusher->trigger('test_channel', 'my_event', 'Test string');
+        $result = $this->sockudo->trigger('test_channel', 'my_event', 'Test string');
         self::assertEquals(1, $this->count);
     }
 }

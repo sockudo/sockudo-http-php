@@ -3,18 +3,18 @@
 namespace unit;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 
 class AuthQueryStringTest extends TestCase
 {
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
-        $this->pusher = new Pusher('thisisaauthkey', 'thisisasecret', 1);
+        $this->sockudo = new Sockudo('thisisaauthkey', 'thisisasecret', 1);
     }
 
     public function testArrayImplode(): void
@@ -22,7 +22,7 @@ class AuthQueryStringTest extends TestCase
         $val = ['testKey' => 'testValue'];
 
         $expected = 'testKey=testValue';
-        $actual = Pusher::array_implode('=', '&', $val);
+        $actual = Sockudo::array_implode('=', '&', $val);
 
         self::assertEquals(
             $expected,
@@ -36,7 +36,7 @@ class AuthQueryStringTest extends TestCase
         $val = ['testKey' => 'testValue', 'testKey2' => 'testValue2'];
 
         $expected = 'testKey=testValue&testKey2=testValue2';
-        $actual = Pusher::array_implode('=', '&', $val);
+        $actual = Sockudo::array_implode('=', '&', $val);
 
         self::assertEquals(
             $expected,
@@ -56,7 +56,7 @@ class AuthQueryStringTest extends TestCase
         $query_params = [
             'name' => 'an_event',
         ];
-        $auth_query_string = Pusher::build_auth_query_params(
+        $auth_query_string = Sockudo::build_auth_query_params(
             $auth_key,
             $auth_secret,
             $method,

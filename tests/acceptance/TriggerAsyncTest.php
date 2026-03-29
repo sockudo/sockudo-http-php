@@ -3,47 +3,47 @@
 namespace acceptance;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 use stdClass;
 
 class TriggerAsyncTest extends TestCase
 {
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
-        if (PUSHERAPP_AUTHKEY === '' || PUSHERAPP_SECRET === '' || PUSHERAPP_APPID === '') {
+        if (SOCKUDOAPP_AUTHKEY === '' || SOCKUDOAPP_SECRET === '' || SOCKUDOAPP_APPID === '') {
             self::markTestSkipped('Please set the
-            PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET and
-            PUSHERAPP_APPID keys.');
+            SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET and
+            SOCKUDOAPP_APPID keys.');
         } else {
-            $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, ['cluster' => PUSHERAPP_CLUSTER]);
+            $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, ['cluster' => SOCKUDOAPP_CLUSTER]);
         }
     }
 
     public function testObjectConstruct(): void
     {
-        self::assertNotNull($this->pusher, 'Created new \Pusher\Pusher object');
+        self::assertNotNull($this->sockudo, 'Created new \Sockudo\Sockudo object');
     }
 
     public function testStringPush(): void
     {
-        $result = $this->pusher->triggerAsync('test_channel', 'my_event', 'Test string')->wait();
+        $result = $this->sockudo->triggerAsync('test_channel', 'my_event', 'Test string')->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testArrayPush(): void
     {
-        $result = $this->pusher->triggerAsync('test_channel', 'my_event', ['test' => 1])->wait();
+        $result = $this->sockudo->triggerAsync('test_channel', 'my_event', ['test' => 1])->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testPushWithSocketId(): void
     {
-        $result = $this->pusher->triggerAsync('test_channel', 'my_event', ['test' => 1], ['socket_id' => '123.456'])->wait();
+        $result = $this->sockudo->triggerAsync('test_channel', 'my_event', ['test' => 1], ['socket_id' => '123.456'])->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
@@ -60,7 +60,7 @@ class TriggerAsyncTest extends TestCase
             "presence-my-channel" => $expectedPresenceMyChannel,
         ];
 
-        $result = $this->pusher->triggerAsync([TEST_CHANNEL, 'presence-my-channel'], 'my_event', ['test' => 1], ['info' => 'user_count,subscription_count'])->wait();
+        $result = $this->sockudo->triggerAsync([TEST_CHANNEL, 'presence-my-channel'], 'my_event', ['test' => 1], ['info' => 'user_count,subscription_count'])->wait();
         self::assertEquals($expectedResult, $result);
     }
 
@@ -68,75 +68,75 @@ class TriggerAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => PUSHERAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER
         ];
-        $pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
-        $result = $pusher->triggerAsync('test_channel', 'my_event', ['encrypted' => 1])->wait();
+        $result = $sockudo->triggerAsync('test_channel', 'my_event', ['encrypted' => 1])->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testSendingOver10kBMessageReturns413(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
         $this->expectExceptionCode('413');
 
         $data = str_pad('', 11 * 1024, 'a');
-        $this->pusher->triggerAsync('test_channel', 'my_event', $data, [], true)->wait();
+        $this->sockudo->triggerAsync('test_channel', 'my_event', $data, [], true)->wait();
     }
 
     public function testTriggeringEventOnOver100ChannelsThrowsException(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $channels = [];
         while (count($channels) <= 101) {
             $channels[] = ('channel-' . count($channels));
         }
         $data = ['event_name' => 'event_data'];
-        $this->pusher->triggerAsync($channels, 'my_event', $data)->wait();
+        $this->sockudo->triggerAsync($channels, 'my_event', $data)->wait();
     }
 
     public function testTriggeringEventOnMultipleChannels(): void
     {
         $data = ['event_name' => 'event_data'];
         $channels = ['test_channel_1', 'test_channel_2'];
-        $result = $this->pusher->triggerAsync($channels, 'my_event', $data)->wait();
+        $result = $this->sockudo->triggerAsync($channels, 'my_event', $data)->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testTriggeringEventOnPrivateEncryptedChannelSuccess(): void
     {
         $options = ['encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
-                    'cluster' => PUSHERAPP_CLUSTER];
-        $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+                    'cluster' => SOCKUDOAPP_CLUSTER];
+        $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $data = ['event_name' => 'event_data'];
         $channels = ['private-encrypted-ceppaio'];
-        $result = $this->pusher->triggerAsync($channels, 'my_event', $data)->wait();
+        $result = $this->sockudo->triggerAsync($channels, 'my_event', $data)->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testTriggeringEventOnMultipleChannelsWithEncryptedChannelPresentError(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $options = ['encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
-                    'cluster' => PUSHERAPP_CLUSTER];
-        $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+                    'cluster' => SOCKUDOAPP_CLUSTER];
+        $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $data = ['event_name' => 'event_data'];
         $channels = ['my-chan-ceppaio', 'private-encrypted-ceppaio'];
-        $this->pusher->triggerAsync($channels, 'my_event', $data)->wait();
+        $this->sockudo->triggerAsync($channels, 'my_event', $data)->wait();
     }
 
     public function testTriggeringApiExceptionIfConnectionErrorOcurred(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
 
         $options = ['host' => 'invalidhost'];
-        $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, $options);
+        $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
-        $this->pusher->triggerAsync('test_channel', 'my_event', 'event_data')->wait();
+        $this->sockudo->triggerAsync('test_channel', 'my_event', 'event_data')->wait();
     }
 }

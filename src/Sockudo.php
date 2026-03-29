@@ -1,6 +1,6 @@
 <?php
 
-namespace Pusher;
+namespace Sockudo;
 
 use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Exception\ConnectException;
@@ -12,7 +12,7 @@ use Psr\Log\LogLevel;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Promise\PromiseInterface;
 
-class Pusher implements LoggerAwareInterface, PusherInterface
+class Sockudo implements LoggerAwareInterface, SockudoInterface
 {
     use LoggerAwareTrait;
 
@@ -22,9 +22,25 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     public static $VERSION = '7.2.6';
 
     /**
-     * @var null|PusherCrypto
+     * @var null|SockudoCrypto
      */
     private $crypto;
+
+    /**
+     * @var string 16-char base64url identifier for deterministic idempotency keys.
+     */
+    private string $baseId;
+
+    /**
+     * @var int Monotonic counter for deterministic idempotency keys.
+     * Incremented before each publish call.
+     */
+    private int $publishSerial = 0;
+
+    /**
+     * @var int Maximum number of retry attempts for network/5xx errors.
+     */
+    private int $maxRetries = 3;
 
     /**
      * @var array Settings
@@ -34,6 +50,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         'port'                  => 80,
         'path'                  => '',
         'timeout'               => 30,
+        'auto_idempotency_key'  => true,
     ];
 
     /**
@@ -42,15 +59,15 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     private $client = null; // Guzzle client
 
     /**
-     * Initializes a new Pusher instance with key, secret, app ID and channel.
+     * Initializes a new Sockudo instance with key, secret, app ID and channel.
      *
      * @param string $auth_key
      * @param string $secret
      * @param string $app_id
      * @param array $options  [optional]
-     *                         Options to configure the Pusher instance.
+     *                         Options to configure the Sockudo instance.
      *                         scheme - e.g. http or https
-     *                         host - the host e.g. api-mt1.pusher.com. No trailing forward slash.
+     *                         host - the host e.g. localhost. No trailing forward slash.
      *                         port - the http port
      *                         timeout - the http timeout
      *                         useTLS - quick option to use scheme of https and port 443 (default is true).
@@ -58,7 +75,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *                         encryption_master_key_base64 - a 32 byte key, encoded as base64. This key, along with the channel name, are used to derive per-channel encryption keys. Per-channel keys are used to encrypt event data on encrypted channels.
      * @param ClientInterface|null $client [optional] - a Guzzle client to use for all HTTP requests
      *
-     * @throws PusherException Throws exception if any required dependencies are missing
+     * @throws SockudoException Throws exception if any required dependencies are missing
      */
     public function __construct(string $auth_key, string $secret, string $app_id, array $options = [], ?ClientInterface $client = null)
     {
@@ -77,6 +94,8 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             $options['port'] = 443;
         }
 
+        $this->baseId = rtrim(strtr(base64_encode(random_bytes(12)), '+/', '-_'), '=');
+
         $this->settings['auth_key'] = $auth_key;
         $this->settings['secret'] = $secret;
         $this->settings['app_id'] = $app_id;
@@ -94,9 +113,9 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             if (array_key_exists('host', $options)) {
                 $this->settings['host'] = $options['host'];
             } elseif (array_key_exists('cluster', $options)) {
-                $this->settings['host'] = 'api-' . $options['cluster'] . '.pusher.com';
+                $this->settings['host'] = 'api-' . $options['cluster'] . '.sockudo.com';
             } else {
-                $this->settings['host'] = 'api-mt1.pusher.com';
+                $this->settings['host'] = 'localhost';
             }
         }
 
@@ -108,10 +127,10 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         }
 
         if ($options['encryption_master_key_base64'] !== '') {
-            $parsedKey = PusherCrypto::parse_master_key(
+            $parsedKey = SockudoCrypto::parse_master_key(
                 $options['encryption_master_key_base64']
             );
-            $this->crypto = new PusherCrypto($parsedKey);
+            $this->crypto = new SockudoCrypto($parsedKey);
         }
 
 
@@ -152,7 +171,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         }
 
         // Support old style logger (deprecated)
-        $msg = sprintf('Pusher: %s: %s', strtoupper($level), $msg);
+        $msg = sprintf('Sockudo: %s: %s', strtoupper($level), $msg);
         $replacement = [];
 
         foreach ($context as $k => $v) {
@@ -165,16 +184,16 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     /**
      * Check if the current PHP setup is sufficient to run this class.
      *
-     * @throws PusherException If any required dependencies are missing
+     * @throws SockudoException If any required dependencies are missing
      */
     private function check_compatibility(): void
     {
         if (!extension_loaded('json')) {
-            throw new PusherException('The Pusher library requires the PHP JSON module. Please ensure it is installed');
+            throw new SockudoException('The Sockudo library requires the PHP JSON module. Please ensure it is installed');
         }
 
         if (!in_array('sha256', hash_algos(), true)) {
-            throw new PusherException('SHA256 appears to be unsupported - make sure you have support for it, or upgrade your version of PHP.');
+            throw new SockudoException('SHA256 appears to be unsupported - make sure you have support for it, or upgrade your version of PHP.');
         }
     }
 
@@ -183,12 +202,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string[] $channels An array of channel names to validate
      *
-     * @throws PusherException If $channels is too big or any channel is invalid
+     * @throws SockudoException If $channels is too big or any channel is invalid
      */
     private function validate_channels(array $channels): void
     {
         if (count($channels) > 100) {
-            throw new PusherException('An event can be triggered on a maximum of 100 channels in a single call.');
+            throw new SockudoException('An event can be triggered on a maximum of 100 channels in a single call.');
         }
 
         foreach ($channels as $channel) {
@@ -201,12 +220,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string $channel The channel name to validate
      *
-     * @throws PusherException If $channel is invalid
+     * @throws SockudoException If $channel is invalid
      */
     private function validate_channel(string $channel): void
     {
         if (!preg_match('/\A#?[-a-zA-Z0-9_=@,.;]+\z/', $channel)) {
-            throw new PusherException('Invalid channel name ' . $channel);
+            throw new SockudoException('Invalid channel name ' . $channel);
         }
     }
 
@@ -215,12 +234,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string $socket_id The socket ID to validate
      *
-     * @throws PusherException If $socket_id is invalid
+     * @throws SockudoException If $socket_id is invalid
      */
     private function validate_socket_id(string $socket_id): void
     {
         if ($socket_id !== null && !preg_match('/\A\d+\.\d+\z/', $socket_id)) {
-            throw new PusherException('Invalid socket ID ' . $socket_id);
+            throw new SockudoException('Invalid socket ID ' . $socket_id);
         }
     }
 
@@ -229,12 +248,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string $user_id The user id to validate
      *
-     * @throws PusherException If $user_id is invalid
+     * @throws SockudoException If $user_id is invalid
      */
     private function validate_user_id(string $user_id): void
     {
         if ($user_id === null || empty($user_id)) {
-            throw new PusherException('Invalid user id ' . $user_id);
+            throw new SockudoException('Invalid user id ' . $user_id);
         }
     }
 
@@ -350,7 +369,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $has_encrypted_channel = false;
         foreach ($channels as $chan) {
-            if (PusherCrypto::is_encrypted_channel($chan)) {
+            if (SockudoCrypto::is_encrypted_channel($chan)) {
                 $has_encrypted_channel = true;
                 break;
             }
@@ -359,7 +378,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         if ($has_encrypted_channel) {
             if (count($channels) > 1) {
                 // For rationale, see limitations of end-to-end encryption in the README
-                throw new PusherException('You cannot trigger to multiple channels when using encrypted channels');
+                throw new SockudoException('You cannot trigger to multiple channels when using encrypted channels');
             } else {
                 try {
                     $data_encoded = $this->crypto->encrypt_payload(
@@ -367,14 +386,14 @@ class Pusher implements LoggerAwareInterface, PusherInterface
                         $already_encoded ? $data : json_encode($data, JSON_THROW_ON_ERROR)
                     );
                 } catch (\JsonException $e) {
-                    throw new PusherException('Data encoding error.');
+                    throw new SockudoException('Data encoding error.');
                 }
             }
         } else {
             try {
                 $data_encoded = $already_encoded ? $data : json_encode($data, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                throw new PusherException('Data encoding error.');
+                throw new SockudoException('Data encoding error.');
             }
         }
 
@@ -399,7 +418,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         try {
             $post_value = json_encode($all_params, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
 
         $query_params['body_md5'] = md5($post_value);
@@ -410,7 +429,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'pusher-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
         ];
 
         $params = array_merge($signature, $query_params);
@@ -426,19 +445,30 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param array|string $channels A channel name or an array of channel names to publish the event on.
      * @param string $event
      * @param mixed $data Event data
-     * @param array $params [optional]
+     * @param array $params [optional] Additional parameters. May include:
+     *   - socket_id: string
+     *   - info: string
+     *   - extras: array{headers?: array<string,mixed>, ephemeral?: bool, idempotency_key?: string, echo?: bool}
      * @param bool $already_encoded [optional]
      *
      * @return object
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      * @throws GuzzleException
-     * @throws PusherException Throws PusherException if $channels is an array of size 101 or above or $socket_id is invalid
+     * @throws SockudoException Throws SockudoException if $channels is an array of size 101 or above or $socket_id is invalid
      */
     public function trigger($channels, string $event, $data, array $params = [], bool $already_encoded = false): object
     {
+        $extra_headers = [];
+        $idempotency_key = $this->resolveIdempotencyKey($params);
+        if ($idempotency_key !== null) {
+            $params['idempotency_key'] = $idempotency_key;
+            $extra_headers['X-Idempotency-Key'] = $idempotency_key;
+        }
+
         $post_value = $this->make_trigger_body($channels, $event, $data, $params, $already_encoded);
         $this->log('trigger POST: {post_value}', compact('post_value'));
-        return $this->process_trigger_result($this->post('/events', $post_value));
+        $result = $this->postWithRetry('/events', $post_value, [], $extra_headers);
+        return $this->process_trigger_result($result);
     }
 
     /**
@@ -452,13 +482,20 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param bool $already_encoded [optional]
      *
      * @return PromiseInterface
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function triggerAsync($channels, string $event, $data, array $params = [], bool $already_encoded = false): PromiseInterface
     {
+        $extra_headers = [];
+        $idempotency_key = $this->resolveIdempotencyKey($params);
+        if ($idempotency_key !== null) {
+            $params['idempotency_key'] = $idempotency_key;
+            $extra_headers['X-Idempotency-Key'] = $idempotency_key;
+        }
+
         $post_value = $this->make_trigger_body($channels, $event, $data, $params, $already_encoded);
         $this->log('trigger POST: {post_value}', compact('post_value'));
-        return $this->postAsync('/events', $post_value)->then(function ($result) {
+        return $this->postAsync('/events', $post_value, [], $extra_headers)->then(function ($result) {
             return $this->process_trigger_result($result);
         });
     }
@@ -472,7 +509,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param bool $already_encoded [optional]
      *
      * @return object
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function sendToUser(string $user_id, string $event, $data, bool $already_encoded = false): object
     {
@@ -489,7 +526,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param bool $already_encoded [optional]
      *
      * @return PromiseInterface
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function sendToUserAsync(string $user_id, string $event, $data, bool $already_encoded = false): PromiseInterface
     {
@@ -514,11 +551,11 @@ class Pusher implements LoggerAwareInterface, PusherInterface
                 try {
                     $data = $already_encoded ? $data : json_encode($data, JSON_THROW_ON_ERROR);
                 } catch (\JsonException $e) {
-                    throw new PusherException('Data encoding error.');
+                    throw new SockudoException('Data encoding error.');
                 }
             }
 
-            if (PusherCrypto::is_encrypted_channel($event['channel'])) {
+            if (SockudoCrypto::is_encrypted_channel($event['channel'])) {
                 $batch[$key]['data'] = $this->crypto->encrypt_payload($event['channel'], $data);
             } else {
                 $batch[$key]['data'] = $data;
@@ -530,7 +567,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         try {
             $post_value = json_encode($post_params, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
 
         $query_params = [];
@@ -543,7 +580,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'pusher-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
         ];
 
         $params = array_merge($signature, $query_params);
@@ -561,13 +598,14 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @return object
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      * @throws GuzzleException
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function triggerBatch(array $batch = [], bool $already_encoded = false): object
     {
         $post_value = $this->make_trigger_batch_body($batch, $already_encoded);
         $this->log('trigger POST: {post_value}', compact('post_value'));
-        return $this->process_trigger_result($this->post('/batch_events', $post_value));
+        $result = $this->postWithRetry('/batch_events', $post_value);
+        return $this->process_trigger_result($result);
     }
 
     /**
@@ -577,7 +615,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param bool $already_encoded [optional]
      *
      * @return PromiseInterface
-     * @throws PusherException
+     * @throws SockudoException
      */
     public function triggerBatchAsync(array $batch = [], bool $already_encoded = false): PromiseInterface
     {
@@ -593,7 +631,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string $user_id
      *
-     * @throws PusherException   If $user_id is invalid
+     * @throws SockudoException   If $user_id is invalid
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      *
      * @return object response body
@@ -610,7 +648,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      *
      * @param string $user_id
      *
-     * @throws PusherException   If $userId is invalid
+     * @throws SockudoException   If $userId is invalid
      *
      * @return PromiseInterface promise wrapping response body
      *
@@ -628,7 +666,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param string $channel The name of the channel
      * @param array  $params  Additional parameters for the query e.g. $params = array( 'info' => 'connection_count' )
      *
-     * @throws PusherException   If $channel is invalid
+     * @throws SockudoException   If $channel is invalid
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      * @throws GuzzleException
      *
@@ -701,14 +739,14 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * All request signing is handled automatically.
      *
      * @param string $path        Path excluding /apps/APP_ID
-     * @param array  $params      API params (see http://pusher.com/docs/rest_api)
+     * @param array  $params      API params (see http://sockudo.com/docs/rest_api)
      * @param bool   $associative When true, return the response body as an associative array, else return as an object
      *
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      * @throws GuzzleException
-     * @throws PusherException
+     * @throws SockudoException
      *
-     * @return mixed See Pusher API docs
+     * @return mixed See Sockudo API docs
      */
     public function get(string $path, array $params = [], $associative = false)
     {
@@ -718,7 +756,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'pusher-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
         ];
 
         $response = $this->client->get(ltrim($path, '/'), [
@@ -739,7 +777,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         try {
             $body = json_decode($response->getBody(), $associative, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data decoding error.');
+            throw new SockudoException('Data decoding error.');
         }
 
         return $body;
@@ -750,16 +788,16 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * All request signing is handled automatically.
      *
      * @param string $path        Path excluding /apps/APP_ID
-     * @param mixed  $body        Request payload (see http://pusher.com/docs/rest_api)
-     * @param array  $params      API params (see http://pusher.com/docs/rest_api)
+     * @param mixed  $body        Request payload (see http://sockudo.com/docs/rest_api)
+     * @param array  $params      API params (see http://sockudo.com/docs/rest_api)
      *
      * @throws ApiErrorException Throws ApiErrorException if the Channels HTTP API responds with an error
      * @throws GuzzleException
-     * @throws PusherException
+     * @throws SockudoException
      *
      * @return mixed Post response body
      */
-    public function post(string $path, $body, array $params = [])
+    public function post(string $path, $body, array $params = [], array $extra_headers = [])
     {
         $path = $this->settings['base_path'] . $path;
 
@@ -767,10 +805,10 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $params_with_signature = $this->sign($path, 'POST', $params);
 
-        $headers = [
+        $headers = array_merge([
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'pusher-http-php ' . self::$VERSION
-        ];
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+        ], $extra_headers);
 
         try {
             $response = $this->client->post(ltrim($path, '/'), [
@@ -795,7 +833,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         try {
             $response_body = json_decode($response->getBody(), false, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data decoding error.');
+            throw new SockudoException('Data decoding error.');
         }
 
         return $response_body;
@@ -806,12 +844,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * All request signing is handled automatically.
      *
      * @param string $path        Path excluding /apps/APP_ID
-     * @param mixed  $body        Request payload (see http://pusher.com/docs/rest_api)
-     * @param array  $params      API params (see http://pusher.com/docs/rest_api)
+     * @param mixed  $body        Request payload (see http://sockudo.com/docs/rest_api)
+     * @param array  $params      API params (see http://sockudo.com/docs/rest_api)
      *
      * @return PromiseInterface Promise wrapping POST response body
      */
-    public function postAsync(string $path, $body, array $params = []): PromiseInterface
+    public function postAsync(string $path, $body, array $params = [], array $extra_headers = []): PromiseInterface
     {
         $path = $this->settings['base_path'] . $path;
 
@@ -819,10 +857,10 @@ class Pusher implements LoggerAwareInterface, PusherInterface
 
         $params_with_signature = $this->sign($path, 'POST', $params);
 
-        $headers = [
+        $headers = array_merge([
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'pusher-http-php ' . self::$VERSION
-        ];
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+        ], $extra_headers);
 
         return $this->client->postAsync(ltrim($path, '/'), [
             'query' => $params_with_signature,
@@ -842,7 +880,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             try {
                 $response_body = json_decode($response->getBody(), false, 512, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                throw new PusherException('Data decoding error.');
+                throw new SockudoException('Data decoding error.');
             }
 
             return $response_body;
@@ -858,7 +896,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param array $user_data
      *
      * @return string Json encoded authentication string.
-     * @throws PusherException Throws exception if $channel is invalid or above or $socket_id is invalid
+     * @throws SockudoException Throws exception if $channel is invalid or above or $socket_id is invalid
      */
     public function authenticateUser(string $socket_id, array $user_data): string
     {
@@ -882,7 +920,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param string|null $custom_data
      *
      * @return string Json encoded authentication string.
-     * @throws PusherException Throws exception if $channel is invalid or above or $socket_id is invalid
+     * @throws SockudoException Throws exception if $channel is invalid or above or $socket_id is invalid
      */
     public function authorizeChannel(string $channel, string $socket_id, ?string $custom_data = null): string
     {
@@ -901,18 +939,18 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             $signature['channel_data'] = $custom_data;
         }
 
-        if (PusherCrypto::is_encrypted_channel($channel)) {
+        if (SockudoCrypto::is_encrypted_channel($channel)) {
             if (!is_null($this->crypto)) {
                 $signature['shared_secret'] = base64_encode($this->crypto->generate_shared_secret($channel));
             } else {
-                throw new PusherException('You must specify an encryption master key to authorize an encrypted channel');
+                throw new SockudoException('You must specify an encryption master key to authorize an encrypted channel');
             }
         }
 
         try {
             $response = json_encode($signature, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
 
         return $response;
@@ -929,7 +967,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param mixed $user_info
      *
      * @return string
-     * @throws PusherException Throws exception if $channel is invalid or above or $socket_id is invalid
+     * @throws SockudoException Throws exception if $channel is invalid or above or $socket_id is invalid
      */
     public function authorizePresenceChannel(string $channel, string $socket_id, string $user_id, $user_info = null): string
     {
@@ -941,7 +979,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         try {
             return $this->authorizeChannel($channel, $socket_id, json_encode($user_data, JSON_THROW_ON_ERROR));
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
     }
 
@@ -979,12 +1017,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     }
 
     /**
-     * Verify that a webhook actually came from Pusher, decrypts any encrypted events, and marshals them into a PHP object.
+     * Verify that a webhook actually came from Sockudo, decrypts any encrypted events, and marshals them into a PHP object.
      *
      * @param array  $headers a array of headers from the request (for example, from getallheaders())
      * @param string $body    the body of the request (for example, from file_get_contents('php://input'))
      *
-     * @throws PusherException
+     * @throws SockudoException
      *
      * @return Webhook marshalled object with the properties time_ms (an int) and events (an array of event objects)
      */
@@ -997,11 +1035,11 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             $decoded_json = json_decode($body, false, 512, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
             $this->log('Unable to decrypt webhook event payload.', null, LogLevel::WARNING);
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
 
         foreach ($decoded_json->events as $event) {
-            if (PusherCrypto::is_encrypted_channel($event->channel)) {
+            if (SockudoCrypto::is_encrypted_channel($event->channel)) {
                 if (!is_null($this->crypto)) {
                     $decryptedEvent = $this->crypto->decrypt_event($event);
 
@@ -1021,12 +1059,12 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     }
 
     /**
-     * Verify that a given Pusher Signature is valid.
+     * Verify that a given Sockudo Signature is valid.
      *
      * @param array  $headers an array of headers from the request (for example, from getallheaders())
      * @param string $body    the body of the request (for example, from file_get_contents('php://input'))
      *
-     * @throws PusherException if signature is incorrect.
+     * @throws SockudoException if signature is incorrect.
      */
     public function verifySignature(array $headers, string $body): void
     {
@@ -1039,7 +1077,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
             }
         }
 
-        throw new PusherException(sprintf('Received WebHook with invalid signature: got %s.', $x_pusher_signature));
+        throw new SockudoException(sprintf('Received WebHook with invalid signature: got %s.', $x_pusher_signature));
     }
 
     /**
@@ -1059,7 +1097,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param array $params [optional]
      * @param bool $already_encoded [optional]
      *
-     * @throws PusherException
+     * @throws SockudoException
      *
      * @return array Event associative array
      */
@@ -1067,15 +1105,15 @@ class Pusher implements LoggerAwareInterface, PusherInterface
     {
         $has_encrypted_channel = false;
         foreach ($channels as $chan) {
-            if (PusherCrypto::is_encrypted_channel($chan)) {
+            if (SockudoCrypto::is_encrypted_channel($chan)) {
                 $has_encrypted_channel = true;
                 break;
             }
         }
 
         if ($has_encrypted_channel) {
-            if (PusherCrypto::has_mixed_channels($channels)) {
-                throw new PusherException('You cannot trigger to encrypted and non-encrypted channels at the same time');
+            if (SockudoCrypto::has_mixed_channels($channels)) {
+                throw new SockudoException('You cannot trigger to encrypted and non-encrypted channels at the same time');
             } else {
                 try {
                     $data_encoded = $this->crypto->encrypt_payload(
@@ -1083,14 +1121,14 @@ class Pusher implements LoggerAwareInterface, PusherInterface
                         $already_encoded ? $data : json_encode($data, JSON_THROW_ON_ERROR)
                     );
                 } catch (\JsonException $e) {
-                    throw new PusherException('Data encoding error.');
+                    throw new SockudoException('Data encoding error.');
                 }
             }
         } else {
             try {
                 $data_encoded = $already_encoded ? $data : json_encode($data, JSON_THROW_ON_ERROR);
             } catch (\JsonException $e) {
-                throw new PusherException('Data encoding error.');
+                throw new SockudoException('Data encoding error.');
             }
         }
 
@@ -1126,7 +1164,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param array $params [optional]
      * @param bool $already_encoded [optional]
      *
-     * @throws PusherException
+     * @throws SockudoException
      *
      * @return string
      */
@@ -1147,7 +1185,7 @@ class Pusher implements LoggerAwareInterface, PusherInterface
                 JSON_THROW_ON_ERROR
             );
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
     }
 
@@ -1160,26 +1198,48 @@ class Pusher implements LoggerAwareInterface, PusherInterface
      * @param array $params [optional]
      * @param bool $already_encoded [optional]
      *
-     * @throws PusherException
+     * @throws SockudoException
      *
      * @return string
      */
     private function make_trigger_batch_body(array $batch = [], bool $already_encoded = false): string
     {
+        $autoIdem = $this->settings['auto_idempotency_key'] ?? false;
+        $serial = null;
+        if ($autoIdem) {
+            $serial = ++$this->publishSerial;
+        }
+
         foreach ($batch as $key => $event) {
             $this->validate_channel($event['channel']);
+            $params = [];
             if (isset($event['socket_id'])) {
                 $this->validate_socket_id($event['socket_id']);
-                $batch[$key] = $this->make_event([$event['channel']], $event['name'], $event['data'], ['socket_id' => $event['socket_id']], $event['info'] ?? null, $already_encoded);
-            } else {
-                $batch[$key] = $this->make_event([$event['channel']], $event['name'], $event['data'], [], $event['info'] ?? null, $already_encoded);
+                $params['socket_id'] = $event['socket_id'];
             }
+
+            $idempotency_key = null;
+            if (isset($event['idempotency_key'])) {
+                $idempotency_key = $event['idempotency_key'] === true
+                    ? self::generateIdempotencyKey()
+                    : $event['idempotency_key'];
+                $params['idempotency_key'] = $idempotency_key;
+            } elseif ($autoIdem) {
+                $idempotency_key = "{$this->baseId}:{$serial}:{$key}";
+                $params['idempotency_key'] = $idempotency_key;
+            }
+
+            if (isset($event['extras'])) {
+                $params['extras'] = $event['extras'];
+            }
+
+            $batch[$key] = $this->make_event([$event['channel']], $event['name'], $event['data'], $params, $event['info'] ?? null, $already_encoded);
         }
 
         try {
             return json_encode(['batch' => $batch], JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new PusherException('Data encoding error.');
+            throw new SockudoException('Data encoding error.');
         }
     }
 
@@ -1199,13 +1259,89 @@ class Pusher implements LoggerAwareInterface, PusherInterface
         return $result;
     }
 
+    /**
+     * Generate a random idempotency key (base64url-encoded 12 random bytes).
+     *
+     * @return string 16-character base64url string
+     */
+    public static function generateIdempotencyKey(): string
+    {
+        return rtrim(strtr(base64_encode(random_bytes(12)), '+/', '-_'), '=');
+    }
+
+    /**
+     * Resolve the idempotency key from params. If the value is boolean true,
+     * auto-generate a UUID v4. If it is a string, use it directly.
+     * Removes the key from params by reference if present.
+     *
+     * @param array &$params
+     * @return string|null
+     */
+    private function resolveIdempotencyKey(array &$params): ?string
+    {
+        if (isset($params['idempotency_key'])) {
+            $value = $params['idempotency_key'];
+            unset($params['idempotency_key']);
+
+            if ($value === true) {
+                return self::generateIdempotencyKey();
+            }
+
+            return (string) $value;
+        }
+
+        if ($this->settings['auto_idempotency_key'] ?? false) {
+            $serial = ++$this->publishSerial;
+            return "{$this->baseId}:{$serial}";
+        }
+
+        return null;
+    }
+
+    /**
+     * POST with built-in retry for network errors and 5xx responses.
+     * Reuses the same request (and idempotency key) across attempts.
+     *
+     * @param string $path
+     * @param string $body
+     * @param array $params
+     * @param array $extra_headers
+     * @return object
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     * @throws SockudoException
+     */
+    private function postWithRetry(string $path, string $body, array $params = [], array $extra_headers = []): object
+    {
+        $lastException = null;
+        for ($attempt = 1; $attempt <= $this->maxRetries; $attempt++) {
+            try {
+                return $this->post($path, $body, $params, $extra_headers);
+            } catch (ApiErrorException $e) {
+                $status = $e->getCode();
+                if ($status >= 500 && $status < 600 && $attempt < $this->maxRetries) {
+                    $lastException = $e;
+                    continue;
+                }
+                throw $e;
+            } catch (ConnectException $e) {
+                if ($attempt < $this->maxRetries) {
+                    $lastException = $e;
+                    continue;
+                }
+                throw new ApiErrorException($e->getMessage());
+            }
+        }
+        throw $lastException;
+    }
+
     private function validate_user_data(array $user_data): void
     {
         if (is_null($user_data)) {
-            throw new PusherException('user_data is null');
+            throw new SockudoException('user_data is null');
         }
         if (!array_key_exists('id', $user_data)) {
-            throw new PusherException('user_data has no id field');
+            throw new SockudoException('user_data has no id field');
         }
         $this->validate_user_id($user_data['id']);
     }

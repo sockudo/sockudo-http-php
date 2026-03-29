@@ -6,51 +6,51 @@ use GuzzleHttp;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Exception\RequestException;
 use PHPUnit\Framework\TestCase;
-use Pusher\ApiErrorException;
-use Pusher\Pusher;
-use Pusher\PusherException;
+use Sockudo\ApiErrorException;
+use Sockudo\Sockudo;
+use Sockudo\SockudoException;
 use stdClass;
 
 class SendToUserTest extends TestCase
 {
 
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
-        if (PUSHERAPP_AUTHKEY === '' || PUSHERAPP_SECRET === '' || PUSHERAPP_APPID === '') {
+        if (SOCKUDOAPP_AUTHKEY === '' || SOCKUDOAPP_SECRET === '' || SOCKUDOAPP_APPID === '') {
             self::markTestSkipped('Please set the
-            PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET and
-            PUSHERAPP_APPID keys.');
+            SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET and
+            SOCKUDOAPP_APPID keys.');
         } else {
-            $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, ['cluster' => PUSHERAPP_CLUSTER]);
+            $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, ['cluster' => SOCKUDOAPP_CLUSTER]);
         }
     }
 
     public function testSendToUser(): void
     {
-        $result = $this->pusher->sendToUser('123', 'my_event', 'Test string');
+        $result = $this->sockudo->sendToUser('123', 'my_event', 'Test string');
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testSendToUserAsync(): void
     {
-        $result = $this->pusher->sendToUserAsync('123', 'my_event', 'Test string')->wait();
+        $result = $this->sockudo->sendToUserAsync('123', 'my_event', 'Test string')->wait();
         self::assertEquals(new stdClass(), $result);
     }
 
     public function testBadUserId(): void
     {
-        $this->expectException(PusherException::class);
-        $this->pusher->terminateUserConnections("");
+        $this->expectException(SockudoException::class);
+        $this->sockudo->terminateUserConnections("");
     }
 
     public function testBadUserIdAsync(): void
     {
-        $this->expectException(PusherException::class);
-        $this->pusher->terminateUserConnectionsAsync("");
+        $this->expectException(SockudoException::class);
+        $this->sockudo->terminateUserConnectionsAsync("");
     }
 }

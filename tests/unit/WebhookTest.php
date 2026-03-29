@@ -3,8 +3,8 @@
 namespace unit;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
-use Pusher\PusherException;
+use Sockudo\Sockudo;
+use Sockudo\SockudoException;
 
 class WebhookTest extends TestCase
 {
@@ -13,14 +13,14 @@ class WebhookTest extends TestCase
      */
     private $auth_key;
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
         $this->auth_key = 'thisisaauthkey';
-        $this->pusher = new Pusher($this->auth_key, 'thisisasecret', 1);
+        $this->sockudo = new Sockudo($this->auth_key, 'thisisasecret', 1);
     }
 
     public function testValidWebhookSignature(): void
@@ -32,14 +32,14 @@ class WebhookTest extends TestCase
             'X-Pusher-Signature' => $signature,
         ];
 
-        $this->pusher->ensure_valid_signature($headers, $body);
+        $this->sockudo->ensure_valid_signature($headers, $body);
 
         self::assertTrue(true);
     }
 
     public function testInvalidWebhookSignature(): void
     {
-        $this->expectException(PusherException::class);
+        $this->expectException(SockudoException::class);
 
         $signature = 'potato';
         $body = '{"hello":"world"}';
@@ -47,7 +47,7 @@ class WebhookTest extends TestCase
             'X-Pusher-Key'       => $this->auth_key,
             'X-Pusher-Signature' => $signature,
         ];
-        $this->pusher->ensure_valid_signature($headers, $body);
+        $this->sockudo->ensure_valid_signature($headers, $body);
     }
 
     public function testDecodeWebhook(): void
@@ -56,7 +56,7 @@ class WebhookTest extends TestCase
         $body = '{"time_ms":1530710011901,"events":[{"name":"client_event","channel":"private-my-channel","event":"client-event","data":"Unencrypted","socket_id":"240621.35780774"}]}';
         $headers = json_decode($headers_json, true, 512, JSON_THROW_ON_ERROR);
 
-        $decodedWebhook = $this->pusher->webhook($headers, $body);
+        $decodedWebhook = $this->sockudo->webhook($headers, $body);
         self::assertEquals(1530710011901, $decodedWebhook->get_time_ms());
         self::assertCount(1, $decodedWebhook->get_events());
     }

@@ -3,35 +3,35 @@
 namespace acceptance;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\Pusher;
+use Sockudo\Sockudo;
 
 class ChannelQueryTest extends TestCase
 {
     /**
-     * @var Pusher
+     * @var Sockudo
      */
-    private $pusher;
+    private $sockudo;
 
     protected function setUp(): void
     {
-        if (PUSHERAPP_AUTHKEY === '' || PUSHERAPP_SECRET === '' || PUSHERAPP_APPID === '') {
+        if (SOCKUDOAPP_AUTHKEY === '' || SOCKUDOAPP_SECRET === '' || SOCKUDOAPP_APPID === '') {
             self::markTestSkipped('Please set the
-            PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET and
-            PUSHERAPP_APPID keys.');
+            SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET and
+            SOCKUDOAPP_APPID keys.');
         } else {
-            $this->pusher = new Pusher(PUSHERAPP_AUTHKEY, PUSHERAPP_SECRET, PUSHERAPP_APPID, ['cluster' => PUSHERAPP_CLUSTER]);
+            $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, ['cluster' => SOCKUDOAPP_CLUSTER]);
         }
     }
 
     public function testChannelInfo(): void
     {
-        $result = $this->pusher->get_channel_info('channel-test');
+        $result = $this->sockudo->get_channel_info('channel-test');
         self::assertNotNull($result->occupied, 'class has occupied attribute');
     }
 
     public function testChannelList(): void
     {
-        $result = $this->pusher->get_channels();
+        $result = $this->sockudo->get_channels();
         $channels = $result->channels;
 
         self::assertIsArray($channels, 'channels is an array');
@@ -42,7 +42,7 @@ class ChannelQueryTest extends TestCase
         $options = [
             'filter_by_prefix' => '__fish',
         ];
-        $result = $this->pusher->get_channels($options);
+        $result = $this->sockudo->get_channels($options);
 
         $channels = $result->channels;
 
@@ -56,7 +56,7 @@ class ChannelQueryTest extends TestCase
         $options = [
             'filter_by_prefix' => $channel_prefix,
         ];
-        $result = $this->pusher->get_channels($options);
+        $result = $this->sockudo->get_channels($options);
 
         $channels = $result->channels;
 
@@ -66,24 +66,24 @@ class ChannelQueryTest extends TestCase
 
     public function testUsersInfo(): void
     {
-        $result = $this->pusher->get_users_info('presence-channel-test');
+        $result = $this->sockudo->get_users_info('presence-channel-test');
         self::assertNotNull($result->users, 'class has users attribute');
     }
 
     public function testProvidingInfoParameterWithPrefixQueryFailsForPublicChannel(): void
     {
-        $this->expectException(\Pusher\ApiErrorException::class);
+        $this->expectException(\Sockudo\ApiErrorException::class);
 
         $options = [
             'filter_by_prefix' => 'test_',
             'info'             => 'user_count',
         ];
-        $result = $this->pusher->get_channels($options);
+        $result = $this->sockudo->get_channels($options);
     }
 
     public function testChannelListUsingGenericGet(): void
     {
-        $result = $this->pusher->get('/channels', [], true);
+        $result = $this->sockudo->get('/channels', [], true);
 
         $channels = $result['channels'];
 
@@ -98,7 +98,7 @@ class ChannelQueryTest extends TestCase
     public function testChannelListUsingGenericGetAndPrefixParam(): void
     {
         $channel_prefix = substr(TEST_CHANNEL, 0, 10);
-        $result = $this->pusher->get('/channels', ['filter_by_prefix' => $channel_prefix], true);
+        $result = $this->sockudo->get('/channels', ['filter_by_prefix' => $channel_prefix], true);
 
         $channels = $result['channels'];
 
@@ -112,7 +112,7 @@ class ChannelQueryTest extends TestCase
 
     public function testSingleChannelInfoUsingGenericGet(): void
     {
-        $result = $this->pusher->get('/channels/channel-test');
+        $result = $this->sockudo->get('/channels/channel-test');
         self::assertNotNull($result->occupied, 'class has occupied attribute');
     }
 }

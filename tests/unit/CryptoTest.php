@@ -3,20 +3,20 @@
 namespace unit;
 
 use PHPUnit\Framework\TestCase;
-use Pusher\PusherCrypto;
+use Sockudo\SockudoCrypto;
 use stdClass;
 
 class CryptoTest extends TestCase
 {
     /**
-     * @var PusherCrypto
+     * @var SockudoCrypto
      */
     private $crypto;
 
     protected function setUp(): void
     {
         if (function_exists('sodium_crypto_secretbox')) {
-            $this->crypto = new PusherCrypto('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+            $this->crypto = new SockudoCrypto('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
         } else {
             self::markTestSkipped('libSodium is not available, so end to end encryption is not available.');
         }
@@ -24,53 +24,53 @@ class CryptoTest extends TestCase
 
     public function testObjectConstruct(): void
     {
-        self::assertNotNull($this->crypto, 'Created new \Pusher\PusherCrypto object');
+        self::assertNotNull($this->crypto, 'Created new \Sockudo\SockudoCrypto object');
     }
 
     public function testValidMasterEncryptionKeys(): void
     {
-        self::assertEquals('this is 32 bytes 123456789012345', PusherCrypto::parse_master_key('dGhpcyBpcyAzMiBieXRlcyAxMjM0NTY3ODkwMTIzNDU='));
-        self::assertEquals("this key has nonprintable char \x00", PusherCrypto::parse_master_key('dGhpcyBrZXkgaGFzIG5vbnByaW50YWJsZSBjaGFyIAA='));
+        self::assertEquals('this is 32 bytes 123456789012345', SockudoCrypto::parse_master_key('dGhpcyBpcyAzMiBieXRlcyAxMjM0NTY3ODkwMTIzNDU='));
+        self::assertEquals("this key has nonprintable char \x00", SockudoCrypto::parse_master_key('dGhpcyBrZXkgaGFzIG5vbnByaW50YWJsZSBjaGFyIAA='));
     }
 
     public function testInvalidMasterEncryptionKeyTooShort(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
         $this->expectExceptionMessage('32 bytes');
 
-        PusherCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNA==');
+        SockudoCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNA==');
     }
 
     public function testInvalidMasterEncryptionKeyTooLong(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
         $this->expectExceptionMessage('32 bytes');
 
-        PusherCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNDU2');
+        SockudoCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNDU2');
     }
 
     public function testInvalidMasterEncryptionKeyBase64TooShort(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
         $this->expectExceptionMessage('32 bytes');
 
-        PusherCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNA==');
+        SockudoCrypto::parse_master_key('dGhpcyBpcyAzMSBieXRlcyAxMjM0NTY3ODkwMTIzNA==');
     }
 
     public function testInvalidMasterEncryptionKeyBase64TooLong(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
         $this->expectExceptionMessage('32 bytes');
 
-        PusherCrypto::parse_master_key('dGhpcyBpcyAzMyBieXRlcyAxMjM0NTY3ODkwMTIzNDU2');
+        SockudoCrypto::parse_master_key('dGhpcyBpcyAzMyBieXRlcyAxMjM0NTY3ODkwMTIzNDU2');
     }
 
     public function testInvalidMasterEncryptionKeyBase64InvalidBase64(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
         $this->expectExceptionMessage('valid base64');
 
-        PusherCrypto::parse_master_key('dGhpcyBpcyAzMyBi!XRlcyAxMjM0NTY3ODkw#TIzNDU2');
+        SockudoCrypto::parse_master_key('dGhpcyBpcyAzMyBi!XRlcyAxMjM0NTY3ODkw#TIzNDU2');
     }
 
     public function testGenerateSharedSecret(): void
@@ -83,31 +83,31 @@ class CryptoTest extends TestCase
         self::assertNotEquals($expected, base64_encode($this->crypto->generate_shared_secret('private-encrypted-channel-b')));
 
         // Check that specifying a different key results in a different result
-        $crypto2 = new PusherCrypto('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+        $crypto2 = new SockudoCrypto('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
         self::assertNotEquals($expected, base64_encode($crypto2->generate_shared_secret('private-encrypted-channel-a')));
     }
 
     public function testGenerateSharedSecretNoChannel(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $this->crypto->generate_shared_secret('');
     }
 
     public function testIsEncryptedChannel(): void
     {
-        self::assertEquals(true, PusherCrypto::is_encrypted_channel('private-encrypted-test'));
-        self::assertEquals(false, PusherCrypto::is_encrypted_channel('private-encrypted'));
-        self::assertEquals(false, PusherCrypto::is_encrypted_channel('test-private-encrypted'));
+        self::assertEquals(true, SockudoCrypto::is_encrypted_channel('private-encrypted-test'));
+        self::assertEquals(false, SockudoCrypto::is_encrypted_channel('private-encrypted'));
+        self::assertEquals(false, SockudoCrypto::is_encrypted_channel('test-private-encrypted'));
     }
 
     public function testHasMixedChannels(): void
     {
-        self::assertEquals(false, PusherCrypto::has_mixed_channels(['private-encrypted-test']));
-        self::assertEquals(false, PusherCrypto::has_mixed_channels(['another']));
-        self::assertEquals(true, PusherCrypto::has_mixed_channels(['private-encrypted-test', 'another']));
-        self::assertEquals(false, PusherCrypto::has_mixed_channels(['private-encrypted-test', 'private-encrypted-another']));
-        self::assertEquals(false, PusherCrypto::has_mixed_channels(['test', 'another']));
+        self::assertEquals(false, SockudoCrypto::has_mixed_channels(['private-encrypted-test']));
+        self::assertEquals(false, SockudoCrypto::has_mixed_channels(['another']));
+        self::assertEquals(true, SockudoCrypto::has_mixed_channels(['private-encrypted-test', 'another']));
+        self::assertEquals(false, SockudoCrypto::has_mixed_channels(['private-encrypted-test', 'private-encrypted-another']));
+        self::assertEquals(false, SockudoCrypto::has_mixed_channels(['test', 'another']));
     }
 
     public function testEncryptDecryptEventValid(): void
@@ -128,7 +128,7 @@ class CryptoTest extends TestCase
 
     public function testEncryptPayloadNoChannel(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $channel = '';
         $payload = "now that's what I call a payload!";
@@ -138,7 +138,7 @@ class CryptoTest extends TestCase
 
     public function testEncryptPayloadPublicChannel(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $channel = 'public-static-void-main';
         $payload = "now that's what I call a payload!";
@@ -148,7 +148,7 @@ class CryptoTest extends TestCase
 
     public function testDecryptPayloadWrongKey(): void
     {
-        $this->expectException(\Pusher\PusherException::class);
+        $this->expectException(\Sockudo\SockudoException::class);
 
         $channel = 'private-encrypted-bla';
         $payload = "now that's what I call a payload!";
@@ -159,7 +159,7 @@ class CryptoTest extends TestCase
         $event->data = $encrypted_payload;
         $event->channel = $channel;
 
-        $crypto2 = new PusherCrypto('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+        $crypto2 = new SockudoCrypto('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
         $decrypted_event = $crypto2->decrypt_event($event);
         self::assertEquals(false, $decrypted_event);
     }

@@ -106,6 +106,20 @@ interface SockudoInterface
     public function getPresenceUsers(string $channel): object;
 
     /**
+     * Fetch durable history for a channel.
+     *
+     * @param string $channel The name of the channel
+     * @param array  $params  History query params: limit, direction, cursor,
+     *                        start_serial, end_serial, start_time_ms, end_time_ms
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     *
+     */
+    public function getChannelHistory(string $channel, array $params = []): object;
+
+    /**
      * GET arbitrary REST API resource using a synchronous http client.
      * All request signing is handled automatically.
      *
@@ -217,6 +231,13 @@ interface SockudoInterface
      *
      */
     public function get_users_info(string $channel): object;
+
+    /**
+     * Fetch durable history for a channel.
+     *
+     * @deprecated in favour of getChannelHistory
+     */
+    public function get_channel_history(string $channel, array $params = []): object;
 
     /**
      * Creates a socket signature.

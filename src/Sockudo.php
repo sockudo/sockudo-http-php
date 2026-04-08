@@ -727,6 +727,32 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
     }
 
     /**
+     * Fetch durable history for a specific channel.
+     *
+     * @param string $channel The name of the channel
+     * @param array  $params  History query params: limit, direction, cursor,
+     *                        start_serial, end_serial, start_time_ms, end_time_ms
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     */
+    public function getChannelHistory(string $channel, array $params = []): object
+    {
+        $this->validate_channel($channel);
+
+        return $this->get('/channels/' . $channel . '/history', $params);
+    }
+
+    /**
+     * @deprecated in favour of getChannelHistory
+     */
+    public function get_channel_history(string $channel, array $params = []): object
+    {
+        return $this->getChannelHistory($channel, $params);
+    }
+
+    /**
      * @deprecated in favour of getPresenceUsers
      */
     public function get_users_info(string $channel): object

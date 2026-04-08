@@ -231,6 +231,19 @@ composer install
 composer exec phpunit
 ```
 
+## Channel History
+
+```php
+$page = $sockudo->getChannelHistory('my-channel', [
+    'limit' => 50,
+    'direction' => 'newest_first',
+]);
+
+$nextPage = $sockudo->getChannelHistory('my-channel', [
+    'cursor' => 'opaque-cursor-from-previous-page',
+]);
+```
+
 ## Pusher SDK Compatibility
 
 Sockudo implements the full Pusher HTTP API. If you prefer to use the official `pusher/pusher-php-server` package or are migrating from Pusher, point it at your Sockudo instance:

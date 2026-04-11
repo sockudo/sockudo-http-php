@@ -120,6 +120,31 @@ interface SockudoInterface
     public function getChannelHistory(string $channel, array $params = []): object;
 
     /**
+     * Fetch presence history for a presence channel.
+     *
+     * @param string $channel The name of the presence channel
+     * @param array  $params  Query params: limit, direction, cursor,
+     *                        start_serial, end_serial, start_time_ms, end_time_ms
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     */
+    public function getPresenceHistory(string $channel, array $params = []): object;
+
+    /**
+     * Fetch a presence snapshot (reconstructed membership) for a presence channel.
+     *
+     * @param string $channel The name of the presence channel
+     * @param array  $params  Query params: at_time_ms, at_serial
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     */
+    public function getPresenceSnapshot(string $channel, array $params = []): object;
+
+    /**
      * GET arbitrary REST API resource using a synchronous http client.
      * All request signing is handled automatically.
      *

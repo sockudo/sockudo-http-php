@@ -229,6 +229,14 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
         }
     }
 
+    private function validate_presence_channel(string $channel): void
+    {
+        $this->validate_channel($channel);
+        if (strpos($channel, 'presence-') !== 0) {
+            throw new SockudoException('Presence history is only available for presence channels: ' . $channel);
+        }
+    }
+
     /**
      * Ensure a socket_id is valid based on our spec.
      *
@@ -750,6 +758,41 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
     public function get_channel_history(string $channel, array $params = []): object
     {
         return $this->getChannelHistory($channel, $params);
+    }
+
+    /**
+     * Fetch presence history for a presence channel.
+     *
+     * @param string $channel The name of the presence channel
+     * @param array  $params  Query params: limit, direction, cursor,
+     *                        start_serial, end_serial, start_time_ms, end_time_ms
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     */
+    public function getPresenceHistory(string $channel, array $params = []): object
+    {
+        $this->validate_presence_channel($channel);
+
+        return $this->get('/channels/' . $channel . '/presence/history', $params);
+    }
+
+    /**
+     * Fetch a presence snapshot (reconstructed membership) for a presence channel.
+     *
+     * @param string $channel The name of the presence channel
+     * @param array  $params  Query params: at_time_ms, at_serial
+     *
+     * @throws SockudoException
+     * @throws ApiErrorException
+     * @throws GuzzleException
+     */
+    public function getPresenceSnapshot(string $channel, array $params = []): object
+    {
+        $this->validate_presence_channel($channel);
+
+        return $this->get('/channels/' . $channel . '/presence/history/snapshot', $params);
     }
 
     /**

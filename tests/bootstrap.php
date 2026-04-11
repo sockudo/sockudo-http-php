@@ -26,11 +26,11 @@ foreach ($srcFiles as $srcFile) {
 if (file_exists(__DIR__ . "/config.php") === true) {
     require "config.php";
 } else {
-    define("SOCKUDOAPP_AUTHKEY", getenv("SOCKUDOAPP_AUTHKEY"));
-    define("SOCKUDOAPP_SECRET", getenv("SOCKUDOAPP_SECRET"));
-    define("SOCKUDOAPP_APPID", getenv("SOCKUDOAPP_APPID"));
+    define("SOCKUDOAPP_AUTHKEY", getenv("SOCKUDOAPP_AUTHKEY") ?: '');
+    define("SOCKUDOAPP_SECRET", getenv("SOCKUDOAPP_SECRET") ?: '');
+    define("SOCKUDOAPP_APPID", getenv("SOCKUDOAPP_APPID") ?: '');
 
-    define("SOCKUDOAPP_CLUSTER", getenv("SOCKUDOAPP_CLUSTER"));
+    define("SOCKUDOAPP_CLUSTER", getenv("SOCKUDOAPP_CLUSTER") ?: '');
 
-    define("TEST_CHANNEL", getenv("TEST_CHANNEL"));
+    define("TEST_CHANNEL", getenv("TEST_CHANNEL") ?: '');
 }

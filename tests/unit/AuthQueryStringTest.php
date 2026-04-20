@@ -73,7 +73,7 @@ class AuthQueryStringTest extends TestCase
             'auth_signature' => $expected_auth_signature,
             'auth_timestamp' => $time,
             'auth_version' => $auth_version,
-            'name' => 'an_event'
+            'name' => 'an_event',
         ];
 
         self::assertEquals(

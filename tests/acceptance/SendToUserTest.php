@@ -13,7 +13,6 @@ use stdClass;
 
 class SendToUserTest extends TestCase
 {
-
     /**
      * @var Sockudo
      */

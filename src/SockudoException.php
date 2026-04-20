@@ -4,6 +4,4 @@ namespace Sockudo;
 
 use Exception;
 
-class SockudoException extends Exception
-{
-}
+class SockudoException extends Exception {}

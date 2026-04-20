@@ -33,7 +33,7 @@ class SockudoCrypto
         $encrypted_seen = false;
 
         foreach ($channels as $channel) {
-            if(self::is_encrypted_channel($channel)) {
+            if (self::is_encrypted_channel($channel)) {
                 if ($unencrypted_seen) {
                     return true;
                 } else {
@@ -47,7 +47,7 @@ class SockudoCrypto
                 }
             }
         }
-        
+
         return false;
     }
 

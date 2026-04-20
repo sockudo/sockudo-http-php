@@ -86,9 +86,9 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
             $useTLS = $options['useTLS'] === true;
         }
         if (
-            $useTLS &&
-            !isset($options['scheme']) &&
-            !isset($options['port'])
+            $useTLS
+            && !isset($options['scheme'])
+            && !isset($options['port'])
         ) {
             $options['scheme'] = 'https';
             $options['port'] = 443;
@@ -224,7 +224,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
      */
     private function validate_channel(string $channel): void
     {
-        if (!preg_match('/\A#?[-a-zA-Z0-9_=@,.;]+\z/', $channel)) {
+        if (!preg_match('/\A#?(?![:])[-a-zA-Z0-9_=@,.;:]+\z/', $channel) || str_ends_with($channel, ':')) {
             throw new SockudoException('Invalid channel name ' . $channel);
         }
     }
@@ -437,7 +437,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ];
 
         $params = array_merge($signature, $query_params);
@@ -588,7 +588,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ];
 
         $params = array_merge($signature, $query_params);
@@ -796,6 +796,51 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
     }
 
     /**
+     * Fetch the latest visible version of a mutable message.
+     */
+    public function getMessage(string $channel, string $messageSerial): object
+    {
+        $this->validate_channel($channel);
+        return $this->get('/channels/' . $channel . '/messages/' . $messageSerial);
+    }
+
+    /**
+     * Fetch preserved versions of a mutable message.
+     */
+    public function getMessageVersions(string $channel, string $messageSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->get('/channels/' . $channel . '/messages/' . $messageSerial . '/versions', $params);
+    }
+
+    /**
+     * Apply a mutable-message update.
+     */
+    public function updateMessage(string $channel, string $messageSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->post('/channels/' . $channel . '/messages/' . $messageSerial . '/update', $params);
+    }
+
+    /**
+     * Apply a mutable-message delete.
+     */
+    public function deleteMessage(string $channel, string $messageSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->post('/channels/' . $channel . '/messages/' . $messageSerial . '/delete', $params);
+    }
+
+    /**
+     * Apply a mutable-message append.
+     */
+    public function appendMessage(string $channel, string $messageSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->post('/channels/' . $channel . '/messages/' . $messageSerial . '/append', $params);
+    }
+
+    /**
      * @deprecated in favour of getPresenceUsers
      */
     public function get_users_info(string $channel): object
@@ -825,7 +870,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
 
         $headers = [
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ];
 
         $response = $this->client->get(ltrim($path, '/'), [
@@ -833,7 +878,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
             'http_errors' => false,
             'headers' => $headers,
             'base_uri' => $this->channels_url_prefix(),
-            'timeout' => $this->settings['timeout']
+            'timeout' => $this->settings['timeout'],
         ]);
 
         $status = $response->getStatusCode();
@@ -876,7 +921,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
 
         $headers = array_merge([
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ], $extra_headers);
 
         try {
@@ -886,7 +931,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
                 'http_errors' => false,
                 'headers' => $headers,
                 'base_uri' => $this->channels_url_prefix(),
-                'timeout' => $this->settings['timeout']
+                'timeout' => $this->settings['timeout'],
             ]);
         } catch (ConnectException $e) {
             throw new ApiErrorException($e->getMessage());
@@ -928,7 +973,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
 
         $headers = array_merge([
             'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ], $extra_headers);
 
         return $this->client->postAsync(ltrim($path, '/'), [

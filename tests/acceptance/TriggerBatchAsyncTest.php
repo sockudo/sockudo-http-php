@@ -99,7 +99,7 @@ class TriggerBatchAsyncTest extends TestCase
         $expectedResult->batch = [
             $expectedMyChannel,
             $expectedMyChannel2,
-            $expectedPresenceMyChannel
+            $expectedPresenceMyChannel,
         ];
 
         $batch = [];

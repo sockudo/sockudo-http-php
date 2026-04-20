@@ -145,6 +145,31 @@ interface SockudoInterface
     public function getPresenceSnapshot(string $channel, array $params = []): object;
 
     /**
+     * Fetch the latest visible version of a mutable message.
+     */
+    public function getMessage(string $channel, string $messageSerial): object;
+
+    /**
+     * Fetch preserved versions of a mutable message.
+     */
+    public function getMessageVersions(string $channel, string $messageSerial, array $params = []): object;
+
+    /**
+     * Apply a mutable-message update.
+     */
+    public function updateMessage(string $channel, string $messageSerial, array $params = []): object;
+
+    /**
+     * Apply a mutable-message delete.
+     */
+    public function deleteMessage(string $channel, string $messageSerial, array $params = []): object;
+
+    /**
+     * Apply a mutable-message append.
+     */
+    public function appendMessage(string $channel, string $messageSerial, array $params = []): object;
+
+    /**
      * GET arbitrary REST API resource using a synchronous http client.
      * All request signing is handled automatically.
      *

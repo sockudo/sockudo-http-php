@@ -43,7 +43,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -57,7 +57,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -72,7 +72,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -86,7 +86,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -100,7 +100,7 @@ class TriggerBatchTest extends TestCase
         $expectedResult->batch = [
             $expectedMyChannel,
             $expectedMyChannel2,
-            $expectedPresenceMyChannel
+            $expectedPresenceMyChannel,
         ];
 
         $batch = [];
@@ -115,7 +115,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -130,7 +130,7 @@ class TriggerBatchTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -194,7 +194,7 @@ class TriggerBatchTest extends TestCase
 
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $pc = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 

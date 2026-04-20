@@ -68,7 +68,7 @@ class TriggerAsyncTest extends TestCase
     {
         $options = [
             'useTLS' => true,
-            'cluster' => SOCKUDOAPP_CLUSTER
+            'cluster' => SOCKUDOAPP_CLUSTER,
         ];
         $sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
@@ -108,7 +108,7 @@ class TriggerAsyncTest extends TestCase
     public function testTriggeringEventOnPrivateEncryptedChannelSuccess(): void
     {
         $options = ['encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
-                    'cluster' => SOCKUDOAPP_CLUSTER];
+            'cluster' => SOCKUDOAPP_CLUSTER];
         $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $data = ['event_name' => 'event_data'];
@@ -122,7 +122,7 @@ class TriggerAsyncTest extends TestCase
         $this->expectException(\Sockudo\SockudoException::class);
 
         $options = ['encryption_master_key_base64' => 'Y0F6UkgzVzlGWk0zaVhxU05JR3RLenR3TnVDejl4TVY=',
-                    'cluster' => SOCKUDOAPP_CLUSTER];
+            'cluster' => SOCKUDOAPP_CLUSTER];
         $this->sockudo = new Sockudo(SOCKUDOAPP_AUTHKEY, SOCKUDOAPP_SECRET, SOCKUDOAPP_APPID, $options);
 
         $data = ['event_name' => 'event_data'];

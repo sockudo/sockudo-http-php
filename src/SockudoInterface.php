@@ -170,6 +170,21 @@ interface SockudoInterface
     public function appendMessage(string $channel, string $messageSerial, array $params = []): object;
 
     /**
+     * Publish an annotation for a versioned message.
+     */
+    public function publishAnnotation(string $channel, string $messageSerial, array $params): object;
+
+    /**
+     * Delete an annotation from a versioned message.
+     */
+    public function deleteAnnotation(string $channel, string $messageSerial, string $annotationSerial, array $params = []): object;
+
+    /**
+     * List raw annotation events for a versioned message.
+     */
+    public function listAnnotations(string $channel, string $messageSerial, array $params = []): object;
+
+    /**
      * GET arbitrary REST API resource using a synchronous http client.
      * All request signing is handled automatically.
      *

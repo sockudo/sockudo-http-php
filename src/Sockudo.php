@@ -841,6 +841,33 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
     }
 
     /**
+     * Publish an annotation for a versioned message.
+     */
+    public function publishAnnotation(string $channel, string $messageSerial, array $params): object
+    {
+        $this->validate_channel($channel);
+        return $this->post('/channels/' . $channel . '/messages/' . $messageSerial . '/annotations', json_encode($params, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Delete an annotation from a versioned message.
+     */
+    public function deleteAnnotation(string $channel, string $messageSerial, string $annotationSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->delete('/channels/' . $channel . '/messages/' . $messageSerial . '/annotations/' . $annotationSerial, $params);
+    }
+
+    /**
+     * List raw annotation events for a versioned message.
+     */
+    public function listAnnotations(string $channel, string $messageSerial, array $params = []): object
+    {
+        $this->validate_channel($channel);
+        return $this->get('/channels/' . $channel . '/messages/' . $messageSerial . '/annotations', $params);
+    }
+
+    /**
      * @deprecated in favour of getPresenceUsers
      */
     public function get_users_info(string $channel): object
@@ -874,6 +901,45 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
         ];
 
         $response = $this->client->get(ltrim($path, '/'), [
+            'query' => $signature,
+            'http_errors' => false,
+            'headers' => $headers,
+            'base_uri' => $this->channels_url_prefix(),
+            'timeout' => $this->settings['timeout'],
+        ]);
+
+        $status = $response->getStatusCode();
+
+        if ($status !== 200) {
+            $body = (string) $response->getBody();
+            throw new ApiErrorException($body, $status);
+        }
+
+        try {
+            $body = json_decode($response->getBody(), $associative, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new SockudoException('Data decoding error.');
+        }
+
+        return $body;
+    }
+
+    /**
+     * DELETE arbitrary REST API resource using a synchronous http client.
+     * All request signing is handled automatically.
+     */
+    public function delete(string $path, array $params = [], $associative = false)
+    {
+        $path = $this->settings['base_path'] . $path;
+
+        $signature = $this->sign($path, 'DELETE', $params);
+
+        $headers = [
+            'Content-Type' => 'application/json',
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
+        ];
+
+        $response = $this->client->delete(ltrim($path, '/'), [
             'query' => $signature,
             'http_errors' => false,
             'headers' => $headers,

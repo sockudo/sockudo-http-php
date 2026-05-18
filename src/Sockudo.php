@@ -324,7 +324,13 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
         $params = array_merge($params, $query_params);
         ksort($params);
 
-        $string_to_sign = "$request_method\n" . $request_path . "\n" . self::array_implode('=', '&', $params);
+        $params_for_signing = [];
+        foreach ($params as $key => $value) {
+            $params_for_signing[strtolower((string) $key)] = $value;
+        }
+        ksort($params_for_signing);
+
+        $string_to_sign = "$request_method\n" . $request_path . "\n" . self::array_implode('=', '&', $params_for_signing);
 
         $auth_signature = hash_hmac('sha256', $string_to_sign, $auth_secret, false);
 
@@ -868,6 +874,306 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
     }
 
     /**
+     * Activate or create a push device registration with admin scope.
+     */
+    public function activateDevice(array $device, array $options = []): object
+    {
+        $headers = $this->pushHeaders(
+            'push-admin',
+            null,
+            (bool) ($options['rotateDeviceIdentityToken'] ?? false)
+        );
+
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/deviceRegistrations'),
+            $this->encodeJsonBody($device),
+            [],
+            $headers,
+            [200, 201]
+        );
+    }
+
+    /**
+     * Alias of activateDevice.
+     */
+    public function createDeviceActivation(array $device, array $options = []): object
+    {
+        return $this->activateDevice($device, $options);
+    }
+
+    /**
+     * Update a push device registration with push-subscribe scope.
+     */
+    public function updateDeviceRegistration(array $device, string $deviceIdentityToken): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/deviceRegistrations'),
+            $this->encodeJsonBody($device),
+            [],
+            $this->pushHeaders('push-subscribe', $deviceIdentityToken),
+            [200, 201]
+        );
+    }
+
+    /**
+     * List push device registrations with cursor pagination.
+     */
+    public function listDeviceRegistrations(array $params = []): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/deviceRegistrations'),
+            null,
+            $params,
+            $this->pushHeaders('push-admin')
+        );
+    }
+
+    /**
+     * Get a push device registration.
+     */
+    public function getDeviceRegistration(string $deviceId, ?string $deviceIdentityToken = null): object
+    {
+        $capability = $deviceIdentityToken ? 'push-subscribe' : 'push-admin';
+
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/deviceRegistrations/' . $deviceId),
+            null,
+            [],
+            $this->pushHeaders($capability, $deviceIdentityToken)
+        );
+    }
+
+    /**
+     * Delete a push device registration.
+     */
+    public function deleteDeviceRegistration(string $deviceId, ?string $deviceIdentityToken = null): object
+    {
+        $capability = $deviceIdentityToken ? 'push-subscribe' : 'push-admin';
+
+        return $this->requestWithAcceptedStatuses(
+            'DELETE',
+            $this->pushPath('/deviceRegistrations/' . $deviceId),
+            null,
+            [],
+            $this->pushHeaders($capability, $deviceIdentityToken),
+            [200, 202, 204]
+        );
+    }
+
+    /**
+     * Delete all device registrations for a client identifier.
+     */
+    public function removeDeviceRegistrationsByClient(string $clientId): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'DELETE',
+            $this->pushPath('/deviceRegistrations'),
+            null,
+            ['clientId' => $clientId],
+            $this->pushHeaders('push-admin'),
+            [200, 202, 204]
+        );
+    }
+
+    /**
+     * Upsert a push channel subscription.
+     */
+    public function upsertChannelPushSubscription(array $subscription, ?string $deviceIdentityToken = null): object
+    {
+        $capability = $deviceIdentityToken ? 'push-subscribe' : 'push-admin';
+
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/channelSubscriptions'),
+            $this->encodeJsonBody($subscription),
+            [],
+            $this->pushHeaders($capability, $deviceIdentityToken),
+            [200, 201]
+        );
+    }
+
+    /**
+     * List push channel subscriptions with cursor pagination.
+     */
+    public function listChannelPushSubscriptions(array $params = [], ?string $deviceIdentityToken = null): object
+    {
+        $capability = $deviceIdentityToken ? 'push-subscribe' : 'push-admin';
+
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/channelSubscriptions'),
+            null,
+            $params,
+            $this->pushHeaders($capability, $deviceIdentityToken)
+        );
+    }
+
+    /**
+     * Delete push channel subscriptions.
+     */
+    public function deleteChannelPushSubscriptions(array $params, ?string $deviceIdentityToken = null): object
+    {
+        $capability = $deviceIdentityToken ? 'push-subscribe' : 'push-admin';
+
+        return $this->requestWithAcceptedStatuses(
+            'DELETE',
+            $this->pushPath('/channelSubscriptions'),
+            null,
+            $params,
+            $this->pushHeaders($capability, $deviceIdentityToken),
+            [200, 202, 204]
+        );
+    }
+
+    /**
+     * List subscribed channels with cursor pagination.
+     */
+    public function listChannelPushSubscriptionChannels(array $params = []): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/channelSubscriptions/channels'),
+            null,
+            $params,
+            $this->pushHeaders('push-admin')
+        );
+    }
+
+    /**
+     * List stored push provider credentials with cursor pagination.
+     */
+    public function listPushCredentials(array $params = []): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/credentials'),
+            null,
+            $params,
+            $this->pushHeaders('push-admin')
+        );
+    }
+
+    /**
+     * Store or update a provider credential payload.
+     */
+    public function putPushCredential(string $provider, array $credential): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/credentials/' . $provider),
+            $this->encodeJsonBody($credential),
+            [],
+            $this->pushHeaders('push-admin'),
+            [200, 201]
+        );
+    }
+
+    /**
+     * Publish push asynchronously by default.
+     */
+    public function publishPush(array $request): object
+    {
+        $payload = $request;
+        $payload['sync'] = false;
+
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/publish'),
+            $this->encodeJsonBody($payload),
+            [],
+            $this->pushHeaders('push-admin'),
+            [200, 202]
+        );
+    }
+
+    /**
+     * Alias of publishPush.
+     */
+    public function publishPushDirect(array $request): object
+    {
+        return $this->publishPush($request);
+    }
+
+    /**
+     * Publish a batch of push notifications asynchronously by default.
+     */
+    public function publishPushBatch(array $requests): object
+    {
+        $payload = array_map(function (array $request): array {
+            $request['sync'] = false;
+            return $request;
+        }, $requests);
+
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/batch/publish'),
+            $this->encodeJsonBody($payload),
+            [],
+            $this->pushHeaders('push-admin'),
+            [200, 202]
+        );
+    }
+
+    /**
+     * Schedule a push publish; requires notBeforeMs in the request.
+     */
+    public function schedulePush(array $request): object
+    {
+        if (!array_key_exists('notBeforeMs', $request)) {
+            throw new SockudoException('scheduled push requires notBeforeMs');
+        }
+
+        return $this->publishPush($request);
+    }
+
+    /**
+     * Get the status for a publish id.
+     */
+    public function getPublishStatus(string $publishId): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'GET',
+            $this->pushPath('/publish/' . $publishId . '/status'),
+            null,
+            [],
+            $this->pushHeaders('push-admin')
+        );
+    }
+
+    /**
+     * Cancel a scheduled publish.
+     */
+    public function cancelScheduledPush(string $publishId): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'DELETE',
+            $this->pushPath('/scheduled/' . $publishId),
+            null,
+            [],
+            $this->pushHeaders('push-admin'),
+            [200, 202, 204]
+        );
+    }
+
+    /**
+     * Submit a provider delivery status event.
+     */
+    public function postPushDeliveryStatus(array $event): object
+    {
+        return $this->requestWithAcceptedStatuses(
+            'POST',
+            $this->pushPath('/deliveryStatus'),
+            $this->encodeJsonBody($event),
+            [],
+            $this->pushHeaders('push-admin')
+        );
+    }
+
+    /**
      * @deprecated in favour of getPresenceUsers
      */
     public function get_users_info(string $channel): object
@@ -891,37 +1197,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
      */
     public function get(string $path, array $params = [], $associative = false)
     {
-        $path = $this->settings['base_path'] . $path;
-
-        $signature = $this->sign($path, 'GET', $params);
-
-        $headers = [
-            'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
-        ];
-
-        $response = $this->client->get(ltrim($path, '/'), [
-            'query' => $signature,
-            'http_errors' => false,
-            'headers' => $headers,
-            'base_uri' => $this->channels_url_prefix(),
-            'timeout' => $this->settings['timeout'],
-        ]);
-
-        $status = $response->getStatusCode();
-
-        if ($status !== 200) {
-            $body = (string) $response->getBody();
-            throw new ApiErrorException($body, $status);
-        }
-
-        try {
-            $body = json_decode($response->getBody(), $associative, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            throw new SockudoException('Data decoding error.');
-        }
-
-        return $body;
+        return $this->requestWithAcceptedStatuses('GET', $path, null, $params, [], [200], $associative);
     }
 
     /**
@@ -930,37 +1206,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
      */
     public function delete(string $path, array $params = [], $associative = false)
     {
-        $path = $this->settings['base_path'] . $path;
-
-        $signature = $this->sign($path, 'DELETE', $params);
-
-        $headers = [
-            'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
-        ];
-
-        $response = $this->client->delete(ltrim($path, '/'), [
-            'query' => $signature,
-            'http_errors' => false,
-            'headers' => $headers,
-            'base_uri' => $this->channels_url_prefix(),
-            'timeout' => $this->settings['timeout'],
-        ]);
-
-        $status = $response->getStatusCode();
-
-        if ($status !== 200) {
-            $body = (string) $response->getBody();
-            throw new ApiErrorException($body, $status);
-        }
-
-        try {
-            $body = json_decode($response->getBody(), $associative, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            throw new SockudoException('Data decoding error.');
-        }
-
-        return $body;
+        return $this->requestWithAcceptedStatuses('DELETE', $path, null, $params, [], [200], $associative);
     }
 
     /**
@@ -979,44 +1225,7 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
      */
     public function post(string $path, $body, array $params = [], array $extra_headers = [])
     {
-        $path = $this->settings['base_path'] . $path;
-
-        $params['body_md5'] = md5($body);
-
-        $params_with_signature = $this->sign($path, 'POST', $params);
-
-        $headers = array_merge([
-            'Content-Type' => 'application/json',
-            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
-        ], $extra_headers);
-
-        try {
-            $response = $this->client->post(ltrim($path, '/'), [
-                'query' => $params_with_signature,
-                'body' => $body,
-                'http_errors' => false,
-                'headers' => $headers,
-                'base_uri' => $this->channels_url_prefix(),
-                'timeout' => $this->settings['timeout'],
-            ]);
-        } catch (ConnectException $e) {
-            throw new ApiErrorException($e->getMessage());
-        }
-
-        $status = $response->getStatusCode();
-
-        if ($status !== 200) {
-            $body = (string) $response->getBody();
-            throw new ApiErrorException($body, $status);
-        }
-
-        try {
-            $response_body = json_decode($response->getBody(), false, 512, JSON_THROW_ON_ERROR);
-        } catch (\JsonException $e) {
-            throw new SockudoException('Data decoding error.');
-        }
-
-        return $response_body;
+        return $this->requestWithAcceptedStatuses('POST', $path, $body, $params, $extra_headers);
     }
 
     /**
@@ -1031,42 +1240,125 @@ class Sockudo implements LoggerAwareInterface, SockudoInterface
      */
     public function postAsync(string $path, $body, array $params = [], array $extra_headers = []): PromiseInterface
     {
+        return $this->requestAsyncWithAcceptedStatuses('POST', $path, $body, $params, $extra_headers);
+    }
+
+    private function requestWithAcceptedStatuses(
+        string $method,
+        string $path,
+        ?string $body = null,
+        array $params = [],
+        array $extra_headers = [],
+        array $acceptedStatuses = [200],
+        bool $associative = false
+    ) {
         $path = $this->settings['base_path'] . $path;
+        if ($body !== null) {
+            $params['body_md5'] = md5($body);
+        }
 
-        $params['body_md5'] = md5($body);
-
-        $params_with_signature = $this->sign($path, 'POST', $params);
-
+        $paramsWithSignature = $this->sign($path, $method, $params);
         $headers = array_merge([
             'Content-Type' => 'application/json',
             'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
         ], $extra_headers);
 
-        return $this->client->postAsync(ltrim($path, '/'), [
-            'query' => $params_with_signature,
+        try {
+            $response = $this->client->request($method, ltrim($path, '/'), [
+                'query' => $paramsWithSignature,
+                'body' => $body,
+                'http_errors' => false,
+                'headers' => $headers,
+                'base_uri' => $this->channels_url_prefix(),
+                'timeout' => $this->settings['timeout'],
+            ]);
+        } catch (ConnectException $e) {
+            throw new ApiErrorException($e->getMessage());
+        }
+
+        return $this->decodeAcceptedResponse($response, $acceptedStatuses, $associative);
+    }
+
+    private function requestAsyncWithAcceptedStatuses(
+        string $method,
+        string $path,
+        ?string $body = null,
+        array $params = [],
+        array $extra_headers = [],
+        array $acceptedStatuses = [200],
+        bool $associative = false
+    ): PromiseInterface {
+        $path = $this->settings['base_path'] . $path;
+        if ($body !== null) {
+            $params['body_md5'] = md5($body);
+        }
+
+        $paramsWithSignature = $this->sign($path, $method, $params);
+        $headers = array_merge([
+            'Content-Type' => 'application/json',
+            'X-Pusher-Library' => 'sockudo-http-php ' . self::$VERSION,
+        ], $extra_headers);
+
+        return $this->client->requestAsync($method, ltrim($path, '/'), [
+            'query' => $paramsWithSignature,
             'body' => $body,
             'http_errors' => false,
             'headers' => $headers,
             'base_uri' => $this->channels_url_prefix(),
             'timeout' => $this->settings['timeout'],
-        ])->then(function ($response) {
-            $status = $response->getStatusCode();
-
-            if ($status !== 200) {
-                $body = (string) $response->getBody();
-                throw new ApiErrorException($body, $status);
-            }
-
-            try {
-                $response_body = json_decode($response->getBody(), false, 512, JSON_THROW_ON_ERROR);
-            } catch (\JsonException $e) {
-                throw new SockudoException('Data decoding error.');
-            }
-
-            return $response_body;
+        ])->then(function ($response) use ($acceptedStatuses, $associative) {
+            return $this->decodeAcceptedResponse($response, $acceptedStatuses, $associative);
         }, function (ConnectException $e) {
             throw new ApiErrorException($e->getMessage());
         });
+    }
+
+    private function decodeAcceptedResponse($response, array $acceptedStatuses, bool $associative)
+    {
+        $status = $response->getStatusCode();
+        $rawBody = (string) $response->getBody();
+
+        if (!in_array($status, $acceptedStatuses, true)) {
+            throw new ApiErrorException($rawBody, $status);
+        }
+
+        if ($rawBody === '') {
+            return $associative ? [] : new \stdClass();
+        }
+
+        try {
+            return json_decode($rawBody, $associative, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new SockudoException('Data decoding error.');
+        }
+    }
+
+    private function pushPath(string $suffix): string
+    {
+        return '/push' . $suffix;
+    }
+
+    private function pushHeaders(string $capability = 'push-admin', ?string $deviceIdentityToken = null, bool $rotateDeviceIdentityToken = false): array
+    {
+        $headers = [
+            'X-Sockudo-Push-Capability' => $capability,
+        ];
+        if ($deviceIdentityToken !== null) {
+            $headers['X-Sockudo-Device-Identity-Token'] = $deviceIdentityToken;
+        }
+        if ($rotateDeviceIdentityToken) {
+            $headers['X-Sockudo-Rotate-Device-Identity-Token'] = 'true';
+        }
+        return $headers;
+    }
+
+    private function encodeJsonBody($payload): string
+    {
+        try {
+            return json_encode($payload, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new SockudoException('Data encoding error.');
+        }
     }
 
     /**

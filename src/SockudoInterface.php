@@ -185,6 +185,106 @@ interface SockudoInterface
     public function listAnnotations(string $channel, string $messageSerial, array $params = []): object;
 
     /**
+     * Activate or create a push device registration with admin scope.
+     */
+    public function activateDevice(array $device, array $options = []): object;
+
+    /**
+     * Alias of activateDevice.
+     */
+    public function createDeviceActivation(array $device, array $options = []): object;
+
+    /**
+     * Update a push device registration with push-subscribe scope.
+     */
+    public function updateDeviceRegistration(array $device, string $deviceIdentityToken): object;
+
+    /**
+     * List push device registrations with cursor pagination.
+     */
+    public function listDeviceRegistrations(array $params = []): object;
+
+    /**
+     * Get a push device registration.
+     */
+    public function getDeviceRegistration(string $deviceId, ?string $deviceIdentityToken = null): object;
+
+    /**
+     * Delete a push device registration.
+     */
+    public function deleteDeviceRegistration(string $deviceId, ?string $deviceIdentityToken = null): object;
+
+    /**
+     * Delete all device registrations for a client identifier.
+     */
+    public function removeDeviceRegistrationsByClient(string $clientId): object;
+
+    /**
+     * Upsert a push channel subscription.
+     */
+    public function upsertChannelPushSubscription(array $subscription, ?string $deviceIdentityToken = null): object;
+
+    /**
+     * List push channel subscriptions with cursor pagination.
+     */
+    public function listChannelPushSubscriptions(array $params = [], ?string $deviceIdentityToken = null): object;
+
+    /**
+     * Delete push channel subscriptions.
+     */
+    public function deleteChannelPushSubscriptions(array $params, ?string $deviceIdentityToken = null): object;
+
+    /**
+     * List subscribed channels with cursor pagination.
+     */
+    public function listChannelPushSubscriptionChannels(array $params = []): object;
+
+    /**
+     * List stored push provider credentials with cursor pagination.
+     */
+    public function listPushCredentials(array $params = []): object;
+
+    /**
+     * Store or update a provider credential payload.
+     */
+    public function putPushCredential(string $provider, array $credential): object;
+
+    /**
+     * Publish push asynchronously by default.
+     */
+    public function publishPush(array $request): object;
+
+    /**
+     * Alias of publishPush.
+     */
+    public function publishPushDirect(array $request): object;
+
+    /**
+     * Publish a batch of push notifications asynchronously by default.
+     */
+    public function publishPushBatch(array $requests): object;
+
+    /**
+     * Schedule a push publish; requires notBeforeMs in the request.
+     */
+    public function schedulePush(array $request): object;
+
+    /**
+     * Get the status for a publish id.
+     */
+    public function getPublishStatus(string $publishId): object;
+
+    /**
+     * Cancel a scheduled publish.
+     */
+    public function cancelScheduledPush(string $publishId): object;
+
+    /**
+     * Submit a provider delivery status event.
+     */
+    public function postPushDeliveryStatus(array $event): object;
+
+    /**
      * GET arbitrary REST API resource using a synchronous http client.
      * All request signing is handled automatically.
      *

@@ -82,4 +82,30 @@ class AuthQueryStringTest extends TestCase
             'auth signature valid'
         );
     }
+
+    public function testGenerateSignatureLowercasesQueryKeysButKeepsRequestKeys(): void
+    {
+        $time = time();
+        $auth_key = 'thisisaauthkey';
+        $auth_secret = 'thisisasecret';
+        $request_path = '/apps/1/push/channelSubscriptions';
+        $auth_query_string = Sockudo::build_auth_query_params(
+            $auth_key,
+            $auth_secret,
+            'GET',
+            $request_path,
+            [
+                'deviceId' => 'device-1',
+                'limit' => '10',
+            ],
+            '1.0',
+            $time
+        );
+
+        $expected_to_sign = "GET\n$request_path\nauth_key=$auth_key&auth_timestamp=$time&auth_version=1.0&deviceid=device-1&limit=10";
+
+        self::assertArrayHasKey('deviceId', $auth_query_string);
+        self::assertArrayNotHasKey('deviceid', $auth_query_string);
+        self::assertEquals(hash_hmac('sha256', $expected_to_sign, $auth_secret, false), $auth_query_string['auth_signature']);
+    }
 }

@@ -11,7 +11,8 @@
         "php": "^7.3|^8.0",
         "ext-curl": "*",
         "ext-json": "*",
-        "guzzlehttp/guzzle": "^7.2",
+        "guzzlehttp/guzzle": "^7.15.3",
+        "guzzlehttp/psr7": "^2.12.3",
         "psr/log": "^1.0|^2.0|^3.0",
         "paragonie/sodium_compat": "^1.6|^2.0"
     },
@@ -33,7 +34,7 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-main": "2.1-dev"
+            "dev-main": "2.2-dev"
         }
     },
     "minimum-stability": "dev",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0 - 2026-08-17
+
+* [ADDED] Add synchronous and asynchronous `forceReconnectUser` helpers for `POST /users/{userId}/force_reconnect`.
+* [ADDED] Add acceptance/unit coverage and usage documentation for user connection management.
+* [FIXED] Refresh Guzzle and PSR-7 to releases containing the current security patches.
+
 ## 2.1.0 - 2026-06-27
 
 * [ADDED] Forward-compatibility coverage for future webhook event names and nested payload fields.

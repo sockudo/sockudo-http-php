@@ -69,6 +69,36 @@ interface SockudoInterface
     public function triggerBatchAsync(array $batch = [], bool $already_encoded = false): PromiseInterface;
 
     /**
+     * Send an event to every active connection for a user.
+     */
+    public function sendToUser(string $user_id, string $event, $data, bool $already_encoded = false): object;
+
+    /**
+     * Asynchronously send an event to every active connection for a user.
+     */
+    public function sendToUserAsync(string $user_id, string $event, $data, bool $already_encoded = false): PromiseInterface;
+
+    /**
+     * Terminate every active connection for a user.
+     */
+    public function terminateUserConnections(string $user_id): object;
+
+    /**
+     * Asynchronously terminate every active connection for a user.
+     */
+    public function terminateUserConnectionsAsync(string $user_id): PromiseInterface;
+
+    /**
+     * Force every active connection for a user to reconnect.
+     */
+    public function forceReconnectUser(string $user_id): object;
+
+    /**
+     * Asynchronously force every active connection for a user to reconnect.
+     */
+    public function forceReconnectUserAsync(string $user_id): PromiseInterface;
+
+    /**
      * Get information, such as subscriber and user count, for a channel.
      *
      * @param string $channel The name of the channel
@@ -299,6 +329,23 @@ interface SockudoInterface
      * @return mixed See Sockudo API docs
      */
     public function get(string $path, array $params = [], bool $associative = false);
+
+    /**
+     * Create a signed user-authentication response.
+     *
+     * @param array<string, mixed> $user_data
+     */
+    public function authenticateUser(string $socket_id, array $user_data): string;
+
+    /**
+     * Create a signed private or encrypted channel authorization response.
+     */
+    public function authorizeChannel(string $channel, string $socket_id, ?string $custom_data = null): string;
+
+    /**
+     * Create a signed presence channel authorization response.
+     */
+    public function authorizePresenceChannel(string $channel, string $socket_id, string $user_id, $user_info = null): string;
 
     /**
      * Creates a socket signature.

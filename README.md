@@ -41,14 +41,16 @@ Then run `composer update sockudo/sockudo-php-server`.
 ```php
 use Sockudo\Sockudo;
 
-$sockudo = new Sockudo([
-    'app_id'  => 'your-app-id',
-    'key'     => 'your-app-key',
-    'secret'  => 'your-app-secret',
-    'host'    => '127.0.0.1',
-    'port'    => 6001,
-    'useTLS'  => false,
-]);
+$sockudo = new Sockudo(
+    'your-app-key',
+    'your-app-secret',
+    'your-app-id',
+    [
+        'host'    => '127.0.0.1',
+        'port'    => 6001,
+        'useTLS'  => false,
+    ],
+);
 ```
 
 ### Options
@@ -244,8 +246,11 @@ $guzzle = new GuzzleHttp\Client([
 ]);
 
 $sockudo = new Sockudo(
-    ['app_id' => '...', 'key' => '...', 'secret' => '...'],
-    $guzzle
+    'app-key',
+    'app-secret',
+    'app-id',
+    ['host' => '127.0.0.1', 'port' => 6001, 'useTLS' => false],
+    $guzzle,
 );
 ```
 
